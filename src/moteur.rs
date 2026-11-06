@@ -199,8 +199,13 @@ fn conv(c: &Conv, t: &HashMap<String, Tex>, w: usize, h: usize) -> Tex {
                     let n = (LARG - 1).min(w - x0);
                     dst[1..1 + n].copy_from_slice(&src[x0..x0 + n]);
                     dst[1 + n..].fill(src[w - 1]);
-                    if e.neg { dst.iter_mut().for_each(|v| *v = -*v) }
-                    if e.relu { dst.iter_mut().for_each(|v| *v = v.max(0.0)) }
+                    // un seul passage signe + ReLU, une boucle par cas pour rester vectorisé
+                    match (e.neg, e.relu) {
+                        (false, false) => {}
+                        (false, true) => dst.iter_mut().for_each(|v| *v = v.max(0.0)),
+                        (true, false) => dst.iter_mut().for_each(|v| *v = -*v),
+                        (true, true) => dst.iter_mut().for_each(|v| *v = (-*v).max(0.0)),
+                    }
                 }
             }
             noyau(&termes, &c.biais, &tampon, &mut acc);
@@ -214,6 +219,10 @@ fn conv(c: &Conv, t: &HashMap<String, Tex>, w: usize, h: usize) -> Tex {
 
 /// acc[r][x] = biais[r] + Σ termes Σ canaux m[ch*4+r] * tampon[ch][x+décalage], sur une tuile.
 fn noyau(termes: &[(usize, &[f32; 16])], biais: &[f32; 4], tampon: &[f32], acc: &mut [f32; 4 * TUILE]) {
+    #[cfg(target_arch = "x86_64")]
+    if is_x86_feature_detected!("avx512f") {
+        return unsafe { noyau_avx512(termes, biais, tampon, acc) };
+    }
     #[cfg(target_arch = "x86_64")]
     if is_x86_feature_detected!("avx2") && is_x86_feature_detected!("fma") {
         return unsafe { noyau_avx2(termes, biais, tampon, acc) };
@@ -250,6 +259,32 @@ unsafe fn noyau_avx2(termes: &[(usize, &[f32; 16])], biais: &[f32; 4], tampon: &
             }
         }
         for r in 0..4 { for j in 0..3 { unsafe { _mm256_storeu_ps(acc.as_mut_ptr().add(r * TUILE + xs + j * 8), a[r][j]) } } }
+    }
+}
+
+/// Même calcul que `noyau_avx2`, 48 pixels par itération (3 vecteurs de 16), même ordre des FMA : sortie identique au bit près.
+#[cfg(target_arch = "x86_64")]
+#[target_feature(enable = "avx512f")]
+unsafe fn noyau_avx512(termes: &[(usize, &[f32; 16])], biais: &[f32; 4], tampon: &[f32], acc: &mut [f32; 4 * TUILE]) {
+    use std::arch::x86_64::*;
+    const B: usize = 48;
+    const _: () = assert!(TUILE % B == 0);
+    let p = tampon.as_ptr();
+    for xs in (0..TUILE).step_by(B) {
+        let mut a = [[_mm512_setzero_ps(); 3]; 4];
+        for r in 0..4 { for j in 0..3 { a[r][j] = _mm512_set1_ps(biais[r]) } }
+        for &(o, m) in termes {
+            for ch in 0..4 {
+                // SAFETY : o + 3*LARG + TUILE + BLOC <= tampon.len() (marge BLOC allouée), xs + 48 <= TUILE.
+                let q = unsafe { p.add(o + ch * LARG + xs) };
+                let v = unsafe { [_mm512_loadu_ps(q), _mm512_loadu_ps(q.add(16)), _mm512_loadu_ps(q.add(32))] };
+                for r in 0..4 {
+                    let wgt = _mm512_set1_ps(m[ch * 4 + r]);
+                    for j in 0..3 { a[r][j] = _mm512_fmadd_ps(wgt, v[j], a[r][j]) }
+                }
+            }
+        }
+        for r in 0..4 { for j in 0..3 { unsafe { _mm512_storeu_ps(acc.as_mut_ptr().add(r * TUILE + xs + j * 16), a[r][j]) } } }
     }
 }
 
