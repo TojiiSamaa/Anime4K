@@ -17,16 +17,28 @@ on:
 permissions:
   contents: write        # push results to the `bench` branch (main only)
   pull-requests: write   # comment on PRs
+  actions: read          # 5-minute cooldown between manual runs
 
 concurrency:
   group: bench-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}  # never kill a run on main, queue it
 
 jobs:
   bench:
     runs-on: ubuntu-24.04
-    timeout-minutes: 60
+    timeout-minutes: 15   # one run takes ~5 min
     steps:
+      # Manual runs need write access (GitHub's own check on "Run workflow"); at most one every 5 minutes.
+      - name: Cooldown
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          last=$(gh api "repos/${{ github.repository }}/actions/workflows/perf-bench.yml/runs?event=workflow_dispatch&per_page=5"             --jq '[.workflow_runs[] | select(.id != ${{ github.run_id }})][0].created_at // empty')
+          if [ -n "$last" ] && [ $(( $(date +%s) - $(date -d "$last" +%s) )) -lt 300 ]; then
+            echo "::error::A manual run was started at $last; wait 5 minutes between manual runs."; exit 1
+          fi
+
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0

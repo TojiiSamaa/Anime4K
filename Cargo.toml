@@ -7,3 +7,6 @@ description = "Conversion à froid avec les shaders Anime4K de bloc97 (MIT)"
 
 [profile.release]
 opt-level = 3
+
+[dependencies]
+png = "0.18"

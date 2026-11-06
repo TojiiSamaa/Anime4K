@@ -22,7 +22,7 @@ fn preset(nom: &str) -> Option<&'static [&'static str]> {
 
 fn quitter(msg: &str) -> ! { eprintln!("{msg}"); std::process::exit(1) }
 fn usage() -> ! {
-    quitter("usage :\n  anime4k-rs <entrée> [--preset A|B|C|A+A|B+B|C+A] [--hauteur 2160] [--sortie f.mkv] [--moteur natif|libplacebo] [--taille VL|UL] [--gpu N|nom] [--encodeur libx265|hevc_nvenc|av1_nvenc|...] [--qualite 20] [--debit 8M] [--images N] [--brut] [--shaders <dossier>]\n  anime4k-rs --lister-gpu\n  anime4k-rs comparer <a.raw> <b.raw>   (gbrpf32le, même taille)")
+    quitter("usage :\n  anime4k-rs <entrée> [--preset A|B|C|A+A|B+B|C+A] [--hauteur 2160] [--sortie f.mkv] [--moteur natif|libplacebo] [--taille S|M|L|VL|UL] [--gpu N|nom] [--encodeur libx265|hevc_nvenc|av1_nvenc|...] [--qualite 20] [--debit 8M] [--images N] [--brut] [--shaders <dossier>]\n  anime4k-rs --lister-gpu\n  anime4k-rs comparer <a.raw> <b.raw>   (gbrpf32le, même taille)")
 }
 
 /// (largeur, hauteur, images/s) du premier flux vidéo.
@@ -79,24 +79,40 @@ fn main() {
     let images = opt("--images");
     let enc_args = encodage(&opt("--encodeur").unwrap_or_else(|| "libx265".into()), opt("--qualite").as_deref(), opt("--debit").as_deref());
     let chaine = preset(&nom).unwrap_or_else(|| quitter(&format!("preset inconnu : {nom}")));
-    // --taille UL : les réseaux « ultra large » d'Anime4K à la place des VL (≈ +0,4 dB, ~2× plus lents).
+    // --taille : la taille des réseaux d'Anime4K à la place des VL (S, M, L plus rapides ; UL ≈ +0,4 dB, ~2× plus lent).
     let taille = opt("--taille").unwrap_or_else(|| "VL".into());
-    if taille != "VL" && taille != "UL" { quitter("--taille : VL ou UL") }
+    if !["S", "M", "L", "VL", "UL"].contains(&taille.as_str()) { quitter("--taille : S, M, L, VL ou UL") }
     let sources: Vec<String> = chaine.iter().map(|s| {
         let f = format!("{dossier}/Anime4K_{}.glsl", s.replace("_VL", &format!("_{taille}")));
         std::fs::read_to_string(&f).unwrap_or_else(|e| quitter(&format!("{f} : {e}")))
     }).collect();
 
-    let (w, h, fps) = sonder(&entree);
-    let oh: usize = opt("--hauteur").and_then(|v| v.parse().ok()).unwrap_or(2160);
-    let ow = ((w * oh) as f64 / h as f64 / 2.0).round() as usize * 2;
+    let png = |f: &str| f.to_lowercase().ends_with(".png");
     let sortie = opt("--sortie").unwrap_or_else(|| {
         let p = Path::new(&entree);
         format!("{}/{}.anime4k-{}.{}", p.parent().map_or(".".into(), |d| d.display().to_string()),
-            p.file_stem().unwrap().to_string_lossy(), nom.replace('+', "_"), if brut { "raw" } else { "mkv" })
+            p.file_stem().unwrap().to_string_lossy(), nom.replace('+', "_"),
+            if brut { "raw" } else if png(&entree) && moteur == "natif" { "png" } else { "mkv" })
     });
-    let limite: Vec<String> = images.iter().flat_map(|n| ["-frames:v".to_string(), n.clone()]).collect();
+    let oh: usize = opt("--hauteur").and_then(|v| v.parse().ok()).unwrap_or(2160);
+    let largeur = |w: usize, h: usize| ((w * oh) as f64 / h as f64 / 2.0).round() as usize * 2;
     let t0 = Instant::now();
+
+    // Image PNG -> PNG/brut : tout en mémoire, sans lancer ffprobe ni ffmpeg (~270 ms de lancement par image).
+    if moteur == "natif" && png(&entree) && (brut || png(&sortie)) {
+        let img = lire_png(&entree);
+        let ow = largeur(img.w, img.h);
+        let r = moteur::Moteur::charger(&sources).traiter(img, (ow, oh));
+        if brut { std::fs::write(&sortie, vers_gbrp(&r)).unwrap_or_else(|e| quitter(&format!("{sortie} : {e}"))) } else {
+            // shortcut: bilinéaire si la chaîne n'atteint pas la taille demandée (le chemin vidéo finit en spline36).
+            ecrire_png(&sortie, &if (r.w, r.h) == (ow, oh) { r } else { moteur::reechantillonner(&r, ow, oh) });
+        }
+        return println!("{sortie} ({:.0} ms)", t0.elapsed().as_secs_f64() * 1e3);
+    }
+
+    let (w, h, fps) = sonder(&entree);
+    let ow = largeur(w, h);
+    let limite: Vec<String> = images.iter().flat_map(|n| ["-frames:v".to_string(), n.clone()]).collect();
 
     if moteur == "libplacebo" {
         let glsl = env::temp_dir().join(format!("anime4k-{}.glsl", std::process::id()));
@@ -167,20 +183,7 @@ fn main() {
             ligne[3 * w..].fill(1.0);
         });
         let r = m.traiter(img, (ow, oh));
-        let mut out = vec![0u8; r.w * r.h * 12];
-        let lignes_par = r.h.div_ceil(std::thread::available_parallelism().map_or(1, |n| n.get()));
-        std::thread::scope(|s| {
-            for (plan_sortie, c) in out.chunks_mut(r.w * r.h * 4).zip([1, 2, 0]) {
-                for (k, bloc) in plan_sortie.chunks_mut(lignes_par * r.w * 4).enumerate() {
-                    let r = &r;
-                    s.spawn(move || for (j, ligne) in bloc.chunks_mut(r.w * 4).enumerate() {
-                        let src = &r.d[((k * lignes_par + j) * 4 + c) * r.w..][..r.w];
-                        for (d, v) in ligne.chunks_exact_mut(4).zip(src) { d.copy_from_slice(&v.to_le_bytes()) }
-                    });
-                }
-            }
-        });
-        if tx.send((r.w, r.h, out)).is_err() { break }
+        if tx.send((r.w, r.h, vers_gbrp(&r))).is_err() { break }
         n += 1;
         eprint!("\r{n} images · {:.2} img/s", n as f64 / t0.elapsed().as_secs_f64());
     }
@@ -189,6 +192,60 @@ fn main() {
     enc.join().unwrap();
     eprintln!();
     println!("{sortie} ({n} images en {:.1} s)", t0.elapsed().as_secs_f64());
+}
+
+/// Texture (lignes R, G, B, A) -> gbrpf32le (plans G, B, R), le format brut échangé avec ffmpeg.
+fn vers_gbrp(r: &moteur::Tex) -> Vec<u8> {
+    let mut out = vec![0u8; r.w * r.h * 12];
+    let lignes_par = r.h.div_ceil(std::thread::available_parallelism().map_or(1, |n| n.get()));
+    std::thread::scope(|s| {
+        for (plan_sortie, c) in out.chunks_mut(r.w * r.h * 4).zip([1, 2, 0]) {
+            for (k, bloc) in plan_sortie.chunks_mut(lignes_par * r.w * 4).enumerate() {
+                s.spawn(move || for (j, ligne) in bloc.chunks_mut(r.w * 4).enumerate() {
+                    let src = &r.d[((k * lignes_par + j) * 4 + c) * r.w..][..r.w];
+                    for (d, v) in ligne.chunks_exact_mut(4).zip(src) { d.copy_from_slice(&v.to_le_bytes()) }
+                });
+            }
+        }
+    });
+    out
+}
+
+/// PNG 8 bits (gris, RVB, avec ou sans alpha, palette) -> texture ; valeurs / 255 comme swscale (rgb24 -> gbrpf32le).
+fn lire_png(f: &str) -> moteur::Tex {
+    let err = |e: &dyn std::fmt::Display| -> ! { quitter(&format!("{f} : {e}")) };
+    let fichier = std::fs::File::open(f).unwrap_or_else(|e| err(&e));
+    let mut d = png::Decoder::new(std::io::BufReader::new(fichier));
+    d.set_transformations(png::Transformations::normalize_to_color8());
+    let mut lu = d.read_info().unwrap_or_else(|e| err(&e));
+    let mut buf = vec![0; lu.output_buffer_size().unwrap_or_else(|| err(&"image trop grande"))];
+    let info = lu.next_frame(&mut buf).unwrap_or_else(|e| err(&e));
+    let (w, h, n) = (info.width as usize, info.height as usize, info.color_type.samples());
+    let mut t = moteur::Tex::new(w, h);
+    moteur::par_lignes(&mut t, |y, ligne| {
+        let src = &buf[y * info.line_size..][..w * n];
+        for x in 0..w {
+            let p = &src[x * n..];
+            for c in 0..3 { ligne[c * w + x] = p[if n < 3 { 0 } else { c }] as f32 / 255.0 }
+        }
+        ligne[3 * w..].fill(1.0);
+    });
+    t
+}
+
+/// Texture -> PNG RVB 8 bits (arrondi, écrêté à [0, 1]).
+fn ecrire_png(f: &str, r: &moteur::Tex) {
+    let mut rgb = vec![0u8; r.w * r.h * 3];
+    for (y, l) in rgb.chunks_exact_mut(r.w * 3).enumerate() {
+        let src = &r.d[y * r.w * 4..];
+        for x in 0..r.w { for c in 0..3 { l[x * 3 + c] = (src[c * r.w + x].clamp(0.0, 1.0) * 255.0).round() as u8 } }
+    }
+    let fichier = std::fs::File::create(f).unwrap_or_else(|e| quitter(&format!("{f} : {e}")));
+    let mut e = png::Encoder::new(std::io::BufWriter::new(fichier), r.w as u32, r.h as u32);
+    e.set_color(png::ColorType::Rgb);
+    e.set_depth(png::BitDepth::Eight);
+    e.set_compression(png::Compression::Fast);
+    e.write_header().and_then(|mut w| w.write_image_data(&rgb)).unwrap_or_else(|e| quitter(&format!("{f} : {e}")));
 }
 
 /// Arguments ffmpeg de l'encodeur vidéo : `--encodeur` (libx265 par défaut), `--qualite` (CRF/CQ, 20) ou `--debit` (ex. 8M).
@@ -228,9 +285,11 @@ mod tests {
             let src: Vec<String> = super::preset(p).unwrap().iter()
                 .map(|s| std::fs::read_to_string(format!("{}/Anime4K_{s}.glsl", super::shaders())).expect("shader absent (ANIME4K_SHADERS ?)")).collect();
             super::moteur::Moteur::charger(&src); // panique sur toute ligne non reconnue
-            let ul: Vec<String> = super::preset(p).unwrap().iter()
-                .map(|s| std::fs::read_to_string(format!("{}/Anime4K_{}.glsl", super::shaders(), s.replace("_VL", "_UL"))).unwrap()).collect();
-            super::moteur::Moteur::charger(&ul);
+            for t in ["S", "M", "L", "UL"] {
+                let v: Vec<String> = super::preset(p).unwrap().iter()
+                    .map(|s| std::fs::read_to_string(format!("{}/Anime4K_{}.glsl", super::shaders(), s.replace("_VL", &format!("_{t}")))).unwrap()).collect();
+                super::moteur::Moteur::charger(&v);
+            }
         }
         assert!(super::preset("Z").is_none());
     }

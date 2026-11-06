@@ -4,6 +4,10 @@
     <img src="bench/bench-degraded.svg" alt="Same benchmark on a blurred, H.264-compressed source" width="900">
   </a>
 </p>
+<p align="center">
+  <a href="https://tojiisamaa.github.io/anime4k-rs/bench/"><img src="https://img.shields.io/badge/Results%20(sortable)-sort%20by%20PSNR%20%C2%B7%20SSIM%20%C2%B7%20fidelity-0969da?style=for-the-badge" alt="sortable results"></a>
+  <a href="https://github.com/TojiiSamaa/anime4k-rs/actions/workflows/perf-bench.yml"><img src="https://img.shields.io/badge/Re--run%20the%20bench-Run%20workflow-1a7f37?style=for-the-badge&logo=githubactions&logoColor=white" alt="re-run the bench"></a>
+</p>
 
 # anime4k-rs
 
@@ -22,7 +26,7 @@ The neural networks are **not modified**: same layers, same weights, same pipeli
 |---|---|---|
 | Where it runs | GLSL shaders inside mpv, on the GPU, while you watch | A CLI that writes a new video file |
 | GPU engine | mpv / libplacebo | `--moteur libplacebo`: the same shaders through ffmpeg + libplacebo (Vulkan) |
-| CPU engine | none | `--moteur natif` (default): a pure-Rust interpreter of the shader files, no dependencies |
+| CPU engine | none | `--moteur natif` (default): a pure-Rust interpreter of the shader files (only dependency: the `png` crate) |
 | Modes | key bindings in `input.conf` | `--preset A`, `B`, `C`, `A+A`, `B+B`, `C+A` (same chains as the official HQ modes) |
 | Output size | screen size | `--hauteur N` (default 2160), width follows the aspect ratio |
 | Output file | none | HEVC 10-bit (libx265, CRF 20) by default, or NVENC / AV1 via `--encodeur`; audio, subtitles, attachments and chapters copied |
@@ -77,13 +81,14 @@ cargo build --release
 anime4k-rs episode.mkv                                 # preset A, 2160p, native CPU engine
 anime4k-rs episode.mkv --preset B+B --hauteur 1440     # lighter file for a phone
 anime4k-rs episode.mkv --moteur libplacebo             # on a machine with a GPU (much faster)
+anime4k-rs image.png --preset C --hauteur 2160         # PNG in, PNG out, in memory (no ffmpeg)
 ```
 
 | Option | Default | Meaning |
 |---|---|---|
 | `--preset` | `A` | `A`, `B`, `C`, `A+A`, `B+B`, `C+A` |
 | `--hauteur` | `2160` | output height (width follows) |
-| `--taille` | `VL` | `VL` (official HQ modes) or `UL`: Anime4K's largest networks, about +0.4 dB and ~2× slower |
+| `--taille` | `VL` | `VL` (official HQ modes); `S`, `M`, `L`: smaller networks, 2–3× faster for −0.4 to −1.5 dB (`S` still beats the other Rust port on both bench sources); `UL`: Anime4K's largest networks, about +0.4 dB and ~2× slower |
 | `--sortie` | `<input>.anime4k-<preset>.mkv` | output file |
 | `--moteur` | `natif` | `natif` (CPU) or `libplacebo` (GPU through Vulkan) |
 | `--gpu` | first Vulkan GPU | which graphics card renders: its number, or part of its name (`--gpu 1`, `--gpu "RTX 5080"`). Implies `--moteur libplacebo` |

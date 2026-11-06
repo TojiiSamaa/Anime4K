@@ -4,6 +4,10 @@
     <img src="bench/bench-degraded.svg" alt="Même banc sur une source floutée et compressée en H.264" width="900">
   </a>
 </p>
+<p align="center">
+  <a href="https://tojiisamaa.github.io/anime4k-rs/bench/"><img src="https://img.shields.io/badge/R%C3%A9sultats%20(triables)-tri%20PSNR%20%C2%B7%20SSIM%20%C2%B7%20fid%C3%A9lit%C3%A9-0969da?style=for-the-badge" alt="sortable results"></a>
+  <a href="https://github.com/TojiiSamaa/anime4k-rs/actions/workflows/perf-bench.yml"><img src="https://img.shields.io/badge/Relancer%20le%20banc-Run%20workflow-1a7f37?style=for-the-badge&logo=githubactions&logoColor=white" alt="re-run the bench"></a>
+</p>
 
 # anime4k-rs
 
@@ -22,7 +26,7 @@ Les réseaux de neurones **ne sont pas modifiés** : mêmes couches, mêmes poid
 |---|---|---|
 | Où ça tourne | shaders GLSL dans mpv, sur le GPU, pendant la lecture | un outil en ligne de commande qui écrit une nouvelle vidéo |
 | Moteur GPU | mpv / libplacebo | `--moteur libplacebo` : les mêmes shaders via ffmpeg + libplacebo (Vulkan) |
-| Moteur CPU | aucun | `--moteur natif` (défaut) : interpréteur des shaders en Rust pur, sans dépendance |
+| Moteur CPU | aucun | `--moteur natif` (défaut) : interpréteur des shaders en Rust pur (seule dépendance : le crate `png`) |
 | Modes | raccourcis dans `input.conf` | `--preset A`, `B`, `C`, `A+A`, `B+B`, `C+A` (mêmes chaînes que les modes HQ officiels) |
 | Taille de sortie | taille de l'écran | `--hauteur N` (2160 par défaut), la largeur suit les proportions |
 | Fichier de sortie | aucun | HEVC 10 bits (libx265, CRF 20) par défaut, ou NVENC / AV1 via `--encodeur` ; son, sous-titres, pièces jointes et chapitres recopiés |
@@ -77,13 +81,14 @@ cargo build --release
 anime4k-rs episode.mkv                                 # preset A, 2160p, moteur natif (CPU)
 anime4k-rs episode.mkv --preset B+B --hauteur 1440     # fichier plus léger pour un téléphone
 anime4k-rs episode.mkv --moteur libplacebo             # sur une machine avec GPU (bien plus rapide)
+anime4k-rs image.png --preset C --hauteur 2160         # PNG vers PNG, en mémoire (sans ffmpeg)
 ```
 
 | Option | Défaut | Rôle |
 |---|---|---|
 | `--preset` | `A` | `A`, `B`, `C`, `A+A`, `B+B`, `C+A` |
 | `--hauteur` | `2160` | hauteur de sortie (la largeur suit) |
-| `--taille` | `VL` | `VL` (modes HQ officiels) ou `UL` : les plus gros réseaux d'Anime4K, environ +0,4 dB et ~2× plus lents |
+| `--taille` | `VL` | `VL` (modes HQ officiels) ; `S`, `M`, `L` : réseaux plus petits, 2 à 3× plus rapides pour −0,4 à −1,5 dB (`S` bat encore l'autre portage Rust sur les deux sources du banc) ; `UL` : les plus gros réseaux d'Anime4K, environ +0,4 dB et ~2× plus lents |
 | `--sortie` | `<entrée>.anime4k-<preset>.mkv` | fichier de sortie |
 | `--moteur` | `natif` | `natif` (CPU) ou `libplacebo` (GPU via Vulkan) |
 | `--gpu` | première carte Vulkan | carte graphique qui fait le rendu : son numéro ou une partie de son nom (`--gpu 1`, `--gpu "RTX 5080"`). Implique `--moteur libplacebo` |

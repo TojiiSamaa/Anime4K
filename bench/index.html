@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>anime4k-rs bench</title>
+<style>
+  :root { --bg: #fff; --fg: #1b1f24; --mute: #59636e; --line: #d1d9e0; --row: #f6f8fa; --acc: #0969da; --ok: #1a7f37; --bad: #cf222e; }
+  @media (prefers-color-scheme: dark) { :root { --bg: #0d1117; --fg: #e6edf3; --mute: #9198a1; --line: #30363d; --row: #151b23; --acc: #4493f8; --ok: #3fb950; --bad: #f85149; } }
+  * { box-sizing: border-box }
+  body { margin: 0; padding: 24px 16px; background: var(--bg); color: var(--fg); font: 15px/1.5 system-ui, sans-serif }
+  main { max-width: 1100px; margin: auto }
+  h1 { font-size: 22px; margin: 0 0 4px } h2 { font-size: 17px; margin: 32px 0 4px }
+  .meta, .note { color: var(--mute); font-size: 13px }
+  .bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 16px 0 }
+  button, .btn { font: inherit; font-size: 14px; padding: 6px 12px; border: 1px solid var(--line); border-radius: 6px; background: var(--row); color: var(--fg); cursor: pointer; text-decoration: none }
+  button[aria-pressed="true"] { border-color: var(--acc); color: var(--acc) }
+  .btn.run { background: var(--acc); border-color: var(--acc); color: #fff }
+  .wrap { overflow-x: auto } table { border-collapse: collapse; width: 100%; min-width: 720px }
+  th, td { padding: 6px 10px; border-bottom: 1px solid var(--line); text-align: left; white-space: nowrap }
+  td.n, th.n { text-align: right; font-variant-numeric: tabular-nums }
+  tbody tr:nth-child(odd) { background: var(--row) }
+  tr.ours td:first-child { font-weight: 600 }
+  .best { color: var(--ok); font-weight: 600 } .bad { color: var(--bad) }
+  code { font-size: 13px }
+</style>
+</head>
+<body>
+<main>
+  <h1>anime4k-rs benchmark</h1>
+  <div class="meta">Latest results published by the <code>bench</code> workflow on <code>main</code>. Best value per column in green.</div>
+  <div class="bar" role="group" aria-label="Sort by">
+    <span class="note">Sort by</span>
+    <button data-k="ms">Time</button>
+    <button data-k="psnr">PSNR</button>
+    <button data-k="ssim">SSIM</button>
+    <button data-k="fidelity_psnr">Fidelity</button>
+    <button data-k="rel">Reliability</button>
+  </div>
+  <div class="bar">
+    <a class="btn run" id="run" href="https://github.com/TojiiSamaa/anime4k-rs/actions/workflows/perf-bench.yml">Re-run the bench ↗</a>
+    <span class="note" id="cool">Needs a GitHub account with write access to the repo (button “Run workflow”). One manual run every 5 minutes.</span>
+  </div>
+  <div id="out"><p class="note">Loading…</p></div>
+</main>
+<script>
+const REPO = "TojiiSamaa/anime4k-rs", API = `https://api.github.com/repos/${REPO}`;
+const SOURCES = [["history", "Clean source"], ["history-degraded", "Blurred + H.264 source"]];
+// higher is better, except time
+const COLS = [["ms", "ms / image", 0, false], ["psnr", "PSNR vs ground truth", 2, true], ["ssim", "SSIM", 4, true], ["fidelity_psnr", "Fidelity vs GLSL", 2, true], ["rel", "Reliability", 0, true]];
+let data = [], key = "ms", asc = true;
+
+const rel = e => e.error && !e.runs_ok ? -1 : (e.runs ? e.runs_ok / e.runs : 0) + (e.deterministic ? 1 : 0);
+const relTxt = e => e.error && !e.runs_ok ? "build/run failed" : `${e.runs_ok}/${e.runs} runs ok · ${e.deterministic ? "deterministic" : "NON-deterministic"}`;
+const val = (e, k) => k === "rel" ? rel(e) : e[k];
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+function table(r) {
+  const rows = [...r.entries].sort((a, b) => {
+    const x = val(a, key), y = val(b, key);
+    if (x == null) return 1; if (y == null) return -1;
+    return asc ? x - y : y - x;
+  });
+  const best = {};
+  for (const [k, , , hi] of COLS) {
+    const v = r.entries.map(e => val(e, k)).filter(v => v != null);
+    if (v.length) best[k] = hi ? Math.max(...v) : Math.min(...v);
+  }
+  const cell = (e, [k, , nd]) => {
+    const v = val(e, k), cls = v != null && v === best[k] ? "best" : "";
+    if (k === "rel") return `<td class="${e.deterministic && e.runs_ok === e.runs ? "" : "bad"}">${esc(relTxt(e))}</td>`;
+    return `<td class="n ${cls}">${v == null ? "—" : v.toFixed(nd) + (k.includes("psnr") ? " dB" : "")}</td>`;
+  };
+  return `<div class="wrap"><table><thead><tr><th>Implementation</th><th>Version</th>${COLS.map(([k, t]) => `<th class="${k === "rel" ? "" : "n"}">${t}${k === key ? (asc ? " ▲" : " ▼") : ""}</th>`).join("")}</tr></thead><tbody>${rows.map(e => `<tr class="${e.kind.startsWith("ours") ? "ours" : ""}"><td>${esc(e.impl)}</td><td><code>${esc(e.version)}</code></td>${COLS.map(c => cell(e, c)).join("")}</tr>`).join("")}</tbody></table></div>`;
+}
+
+function render() {
+  document.querySelectorAll("[data-k]").forEach(b => b.setAttribute("aria-pressed", b.dataset.k === key));
+  document.getElementById("out").innerHTML = data.map(({ title, r }) =>
+    `<h2>${title} — preset ${esc(r.preset)}, ${esc(r.input)} → ${esc(r.output)}, ${r.frames} images</h2>
+     <div class="meta"><code>${esc(r.machine.cpu)}</code> · ${r.machine.threads} threads · commit <code>${esc(r.commit)}</code> · ${esc(r.date)}</div>${table(r)}`).join("")
+    || `<p class="note">No results yet.</p>`;
+}
+
+document.querySelectorAll("[data-k]").forEach(b => b.onclick = () => {
+  const k = b.dataset.k, hi = COLS.find(c => c[0] === k)[3];
+  if (k === key) asc = !asc; else { key = k; asc = !hi; }
+  render();
+});
+
+async function load() {
+  try {
+    data = (await Promise.all(SOURCES.map(async ([dir, title]) => {
+      const ls = await (await fetch(`${API}/contents/bench/${dir}?ref=main`)).json();
+      if (!Array.isArray(ls) || !ls.length) return null;
+      const last = ls.filter(f => f.name.endsWith(".json")).sort((a, b) => a.name < b.name ? 1 : -1)[0];
+      return { title, r: await (await fetch(last.download_url)).json() };
+    }))).filter(Boolean);
+    render();
+  } catch (e) { document.getElementById("out").innerHTML = `<p class="note bad">Could not load results (${esc(e.message)}).</p>`; }
+  try { // last manual run, for the 5-minute cooldown
+    const runs = (await (await fetch(`${API}/actions/workflows/perf-bench.yml/runs?event=workflow_dispatch&per_page=1`)).json()).workflow_runs || [];
+    if (runs.length) {
+      const r = runs[0], left = Math.ceil(5 - (Date.now() - Date.parse(r.created_at)) / 60000);
+      document.getElementById("cool").textContent = r.status !== "completed" ? `A manual run is in progress (started ${new Date(r.created_at).toLocaleTimeString()}).`
+        : left > 0 ? `Last manual run ${new Date(r.created_at).toLocaleTimeString()} — next one possible in ${left} min. Needs a GitHub account with write access.`
+        : `Needs a GitHub account with write access to the repo (button “Run workflow”). Last manual run: ${new Date(r.created_at).toLocaleString()} (${r.conclusion}).`;
+    }
+  } catch {}
+}
+load();
+</script>
+</body>
+</html>
