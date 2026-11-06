@@ -1,0 +1,3 @@
+[build]
+# AVX2 + FMA du serveur de conversion
+rustflags = ["-C", "target-cpu=native"]

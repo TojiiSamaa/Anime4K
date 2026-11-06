@@ -1,0 +1,87 @@
+name: bench
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      ours:
+        description: "Our refs to bench (space separated, e.g. 'v0.1.0 main')"
+        default: "HEAD"
+      theirs:
+        description: "andraantariksa/Anime4K-rs refs (e.g. 'v0.1 v0.2 master')"
+        default: "v0.2"
+
+permissions:
+  contents: write        # push results to the `bench` branch (main only)
+  pull-requests: write   # comment on PRs
+
+concurrency:
+  group: bench-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  bench:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Tools
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq ffmpeg mesa-vulkan-drivers unzip >/dev/null
+          rustup toolchain install stable --profile minimal
+
+      - uses: actions/cache@v4
+        with:
+          path: |
+            bench/.cache/sintel_trailer-1080p.mp4
+            bench/.cache/shaders
+            ~/.cargo/registry
+            ~/.cargo/git
+          key: bench-inputs-v1
+
+      - name: Tests
+        run: |
+          python3 bench/bench.py --out /dev/null --frames 0 --ours "" --theirs ""  # only fetches inputs + shaders
+          ANIME4K_SHADERS=$PWD/bench/.cache/shaders cargo test --release
+
+      - name: Bench
+        env:
+          OURS: ${{ github.event_name == 'pull_request' && format('origin/{0} HEAD', github.base_ref) || inputs.ours || 'HEAD' }}
+          THEIRS: ${{ inputs.theirs || 'v0.2' }}
+        run: |
+          python3 bench/bench.py --out result.json --ours "$OURS" --theirs "$THEIRS"
+          python3 bench/render.py result.json --md summary.md --svg bench.svg
+          cat summary.md >> "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: bench-${{ github.sha }}
+          path: |
+            result.json
+            bench.svg
+
+      - name: Comment on PR
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh pr comment ${{ github.event.pull_request.number }} --body-file summary.md --edit-last --create-if-none
+
+      - name: Publish to the bench branch
+        if: github.event_name != 'pull_request'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git fetch origin bench || true
+          git worktree add -B bench pub origin/bench 2>/dev/null || { git worktree add --orphan -b bench pub; }
+          mkdir -p pub/results
+          cp result.json "pub/results/$(date -u +%Y%m%dT%H%M%S)-$(git rev-parse --short HEAD).json"
+          python3 bench/render.py result.json --history pub/results --svg pub/bench.svg --md pub/latest.md
+          cp result.json pub/latest.json
+          cd pub && git add -A && git commit -qm "bench: $(git -C .. rev-parse --short HEAD)" && git push -q origin bench
