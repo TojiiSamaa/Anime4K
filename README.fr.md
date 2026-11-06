@@ -1,6 +1,6 @@
 <p align="center">
   <a href="https://github.com/TojiiSamaa/anime4k-rs/actions/workflows/perf-bench.yml">
-    <img src="https://raw.githubusercontent.com/TojiiSamaa/anime4k-rs/bench/bench.svg" alt="Banc : temps par image, qualité et fiabilité, mis à jour par la CI à chaque push" width="900">
+    <img src="bench/bench.svg" alt="Banc : temps par image, qualité et fiabilité, mis à jour par la CI à chaque push" width="900">
   </a>
 </p>
 
@@ -75,9 +75,17 @@ anime4k-rs episode.mkv --moteur libplacebo             # sur une machine avec GP
 | `--hauteur` | `2160` | hauteur de sortie (la largeur suit) |
 | `--sortie` | `<entrée>.anime4k-<preset>.mkv` | fichier de sortie |
 | `--moteur` | `natif` | `natif` (CPU) ou `libplacebo` (GPU via Vulkan) |
+| `--gpu` | première carte Vulkan | carte graphique qui fait le rendu : son numéro ou une partie de son nom (`--gpu 1`, `--gpu "RTX 5080"`). Implique `--moteur libplacebo` |
 | `--images N` | toutes | s'arrêter après N images (tests) |
 | `--brut` | non | écrire des images `gbrpf32le` brutes au lieu d'une vidéo (bancs) |
 | `--shaders` | `$ANIME4K_SHADERS` ou `./shaders` | dossier des `.glsl` |
+
+`anime4k-rs --lister-gpu` liste les cartes graphiques acceptées par `--gpu` :
+
+```
+0: NVIDIA GeForce RTX 5080 (discrete) (0x2c02)
+1: AMD Radeon(TM) Graphics (integrated) (0x13c0)
+```
 
 `anime4k-rs comparer a.raw b.raw` affiche le PSNR et l'écart max entre deux sorties `--brut`.
 
@@ -107,7 +115,7 @@ Avec un GPU, prendre `--moteur libplacebo`. Le moteur natif sert aux machines qu
    - la **fidélité** : PSNR entre notre moteur natif et les shaders GLSL d'origine exécutés par libplacebo ;
    - la **fiabilité** : chaque image passe deux fois et doit donner une sortie identique au bit près, et le taux de réussite est indiqué.
 3. Il compare plusieurs versions d'un coup. Une PR compare `main` à la tête de la PR et poste l'écart en commentaire. Un lancement manuel accepte n'importe quelle liste de nos tags ou commits, et des versions d'[andraantariksa/Anime4K-rs](https://github.com/andraantariksa/Anime4K-rs). Ce projet est le portage Rust cité dans le README d'Anime4K, et il implémente l'ancien algorithme v1 (« push ») plutôt que le CNN.
-4. Sur `main`, il ajoute le résultat à l'historique de la branche `bench` et redessine la carte en haut de cette page.
+4. Sur `main`, il ajoute le résultat à `bench/history/` et redessine la carte en haut de cette page.
 
 En local : `python3 bench/bench.py --out result.json --ours "HEAD v0.1.0" --theirs "v0.1 v0.2"`, puis `python3 bench/render.py result.json --svg bench.svg`.
 
@@ -118,6 +126,15 @@ Pour le temps réel, on utilise les shaders d'origine. Ce chemin ne change pas e
 ```
 CTRL+1 no-osd change-list glsl-shaders set "~~/shaders/Anime4K_Clamp_Highlights.glsl:~~/shaders/Anime4K_Restore_CNN_VL.glsl:~~/shaders/Anime4K_Upscale_CNN_x2_VL.glsl:~~/shaders/Anime4K_AutoDownscalePre_x2.glsl:~~/shaders/Anime4K_AutoDownscalePre_x4.glsl:~~/shaders/Anime4K_Upscale_CNN_x2_M.glsl"; show-text "Anime4K: Mode A (HQ)"
 CTRL+0 no-osd change-list glsl-shaders clr ""; show-text "GLSL shaders cleared"
+```
+
+Pour choisir la carte graphique qui exécute les shaders pendant la lecture, l'indiquer dans `mpv.conf`. L'une ou l'autre ligne convient, selon l'API de rendu :
+
+```
+gpu-api=vulkan
+vulkan-device="NVIDIA GeForce RTX 5080"   # nom exact, liste : mpv --vulkan-device=help
+# ou, avec l'API Windows par défaut :
+d3d11-adapter="NVIDIA"                    # partie du nom de la carte
 ```
 
 Plex HTPC repose sur mpv et accepte donc les mêmes `mpv.conf` et `input.conf`. Les autres applis Plex, et les téléphones, lisent les fichiers convertis par anime4k-rs.

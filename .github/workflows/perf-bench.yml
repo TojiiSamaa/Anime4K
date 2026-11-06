@@ -73,15 +73,15 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: gh pr comment ${{ github.event.pull_request.number }} --body-file summary.md --edit-last --create-if-none
 
-      - name: Publish to the bench branch
-        if: github.event_name != 'pull_request'
+      # The README shows bench/bench.svg from main; pushes made with GITHUB_TOKEN do not re-trigger this workflow.
+      - name: Update the README card on main
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git fetch origin bench || true
-          git worktree add -B bench pub origin/bench 2>/dev/null || { git worktree add --orphan -b bench pub; }
-          mkdir -p pub/results
-          cp result.json "pub/results/$(date -u +%Y%m%dT%H%M%S)-$(git rev-parse --short HEAD).json"
-          python3 bench/render.py result.json --history pub/results --svg pub/bench.svg --md pub/latest.md
-          cp result.json pub/latest.json
-          cd pub && git add -A && git commit -qm "bench: $(git -C .. rev-parse --short HEAD)" && git push -q origin bench
+          mkdir -p bench/history
+          cp result.json "bench/history/$(date -u +%Y%m%dT%H%M%S)-$(git rev-parse --short HEAD).json"
+          python3 bench/render.py result.json --history bench/history --svg bench/bench.svg --md bench/latest.md
+          git add bench/history bench/bench.svg bench/latest.md
+          git commit -qm "bench: $(git rev-parse --short HEAD) [skip ci]"
+          git pull -q --rebase origin main && git push -q origin HEAD:main

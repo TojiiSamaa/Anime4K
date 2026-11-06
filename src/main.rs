@@ -22,7 +22,7 @@ fn preset(nom: &str) -> Option<&'static [&'static str]> {
 
 fn quitter(msg: &str) -> ! { eprintln!("{msg}"); std::process::exit(1) }
 fn usage() -> ! {
-    quitter("usage :\n  anime4k-rs <entrée> [--preset A|B|C|A+A|B+B|C+A] [--hauteur 2160] [--sortie f.mkv] [--moteur natif|libplacebo] [--images N] [--brut] [--shaders <dossier>]\n  anime4k-rs comparer <a.raw> <b.raw>   (gbrpf32le, même taille)")
+    quitter("usage :\n  anime4k-rs <entrée> [--preset A|B|C|A+A|B+B|C+A] [--hauteur 2160] [--sortie f.mkv] [--moteur natif|libplacebo] [--gpu N|nom] [--images N] [--brut] [--shaders <dossier>]\n  anime4k-rs --lister-gpu\n  anime4k-rs comparer <a.raw> <b.raw>   (gbrpf32le, même taille)")
 }
 
 /// (largeur, hauteur, images/s) du premier flux vidéo.
@@ -49,17 +49,33 @@ fn comparer(a: &str, b: &str) {
     println!("PSNR {psnr:.2} dB · écart max {max:.5} ({:.2}/255)", max * 255.0);
 }
 
+/// Cartes Vulkan vues par ffmpeg (« N: nom (type) »), dans l'ordre accepté par `--gpu N`.
+fn lister_gpu() {
+    let o = Command::new("ffmpeg").args(["-hide_banner", "-v", "verbose", "-init_hw_device", "vulkan=vk", "-f", "lavfi", "-i", "nullsrc=s=16x16", "-frames:v", "1", "-f", "null", "-"])
+        .output().unwrap_or_else(|e| quitter(&format!("ffmpeg : {e}")));
+    let log = String::from_utf8_lossy(&o.stderr);
+    let cartes: Vec<&str> = log.lines().skip_while(|l| !l.contains("GPU listing:")).skip(1)
+        .map(|l| l.rsplit_once("] ").map_or(l, |(_, t)| t).trim())
+        .take_while(|t| t.split_once(": ").is_some_and(|(n, _)| n.parse::<u32>().is_ok())).collect();
+    if cartes.is_empty() { quitter("aucune carte Vulkan trouvée (pilote Vulkan absent ?)") }
+    for c in cartes { println!("{c}") }
+}
+
 fn main() {
     let args: Vec<String> = env::args().skip(1).collect();
     if args.first().map(String::as_str) == Some("comparer") {
         return comparer(args.get(1).unwrap_or_else(|| usage()), args.get(2).unwrap_or_else(|| usage()));
     }
+    if args.iter().any(|a| a == "--lister-gpu") { return lister_gpu() }
     let entree = args.first().filter(|a| !a.starts_with("--")).unwrap_or_else(|| usage()).clone();
     let opt = |cle: &str| args.windows(2).find(|w| w[0] == cle).map(|w| w[1].clone());
     let brut = args.iter().any(|a| a == "--brut");
     let nom = opt("--preset").unwrap_or_else(|| "A".into());
     let dossier = opt("--shaders").unwrap_or_else(shaders);
-    let moteur = opt("--moteur").unwrap_or_else(|| "natif".into());
+    // --gpu (numéro ou partie du nom, cf. --lister-gpu) implique le moteur GPU.
+    let gpu = opt("--gpu");
+    let moteur = opt("--moteur").unwrap_or_else(|| if gpu.is_some() { "libplacebo" } else { "natif" }.into());
+    if gpu.is_some() && moteur != "libplacebo" { quitter("--gpu ne s'applique qu'au moteur libplacebo") }
     let images = opt("--images");
     let chaine = preset(&nom).unwrap_or_else(|| quitter(&format!("preset inconnu : {nom}")));
     let sources: Vec<String> = chaine.iter().map(|s| {
@@ -85,7 +101,8 @@ fn main() {
         let (fmt, fin) = if brut { ("rgba64le", ",format=gbrpf32le") } else { ("yuv420p10le", "") };
         let vf = format!("hwupload,libplacebo=w={ow}:h={oh}:custom_shader_path={}:format={fmt},hwdownload,format={fmt}{fin}", glsl.display());
         let mut c = Command::new("ffmpeg");
-        c.args(["-hide_banner", "-loglevel", "error", "-init_hw_device", "vulkan", "-i", &entree, "-vf", &vf]).args(&limite);
+        let dev = gpu.as_ref().map_or("vulkan=vk".to_string(), |g| format!("vulkan=vk:{g}"));
+        c.args(["-hide_banner", "-loglevel", "error", "-init_hw_device", &dev, "-filter_hw_device", "vk", "-i", &entree, "-vf", &vf]).args(&limite);
         if brut { c.args(["-f", "rawvideo", "-y", &sortie]); } else { c.args(encodage()).args(["-y", &sortie]); }
         let ok = c.status().map(|s| s.success()).unwrap_or(false);
         let _ = std::fs::remove_file(&glsl);

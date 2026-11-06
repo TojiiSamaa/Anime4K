@@ -37,7 +37,7 @@ def reliability(e):
 
 def markdown(r, base=None):
     out = [
-        f"### Benchmark — {r['input']} → {r['output']}, preset {r['preset']}, {r['frames']} frames",
+        f"### Benchmark — {r['input']} → {r['output']}, preset {r['preset']}, {r['frames']} images",
         f"`{r['machine']['cpu']}` · {r['machine']['threads']} threads · commit `{r['commit']}` · {r['date']}",
         "",
         "| Implementation | Version | ms / image | PSNR vs ground truth | SSIM | Fidelity vs GLSL | Reliability |",
@@ -81,11 +81,13 @@ def history(d):
 
 
 def svg(r, hist):
-    rows = [e for e in r["entries"]]
+    # one reference row is enough: the GLSL shaders do not change between our versions
+    refs = [e for e in r["entries"] if e["kind"] == "reference"]
+    rows = [e for e in r["entries"] if e["kind"] != "reference" or e is refs[-1]]
     W, top, rh = 900, 104, 46
-    H = top + rh * len(rows) + (150 if len(hist) >= 2 else 20) + 26
+    H = top + rh * len(rows) + (150 if len(hist) >= 2 else 20) + 44
     ms_max = max((e.get("ms") or 0) for e in rows) or 1
-    x_name, x_bar, bar_w, x_cols = 24, 300, 220, 560
+    x_name, x_bar, bar_w, x_cols = 24, 300, 180, 560
     s = [
         f'<svg xmlns="http://www.w3.org/2000/svg" width="{W}" height="{H}" viewBox="0 0 {W} {H}" '
         f'font-family="Inter,Segoe UI,Helvetica,Arial,sans-serif">',
@@ -97,7 +99,7 @@ def svg(r, hist):
         f'<rect width="{W}" height="{H}" rx="12" fill="var(--bg)" stroke="var(--line)"/>',
         f'<text x="{x_name}" y="40" class="t b" font-size="22">anime4k-rs benchmark</text>',
         f'<text x="{x_name}" y="64" class="m" font-size="13">{escape(r["input"])} → {escape(r["output"])} · preset {escape(r["preset"])} · '
-        f"{r['frames']} frames · {escape(r['machine']['cpu'])} ({r['machine']['threads']} threads) · {escape(r['date'][:10])} · {escape(r['commit'])}</text>",
+        f"{r['frames']} images · {escape(r['machine']['cpu'])} ({r['machine']['threads']} threads) · {escape(r['date'][:10])} · {escape(r['commit'])}</text>",
     ]
     hy = top - 12
     for x, t in (
@@ -165,8 +167,10 @@ def svg(r, hist):
         s += spark(hist, x_name, y + 30, W - 48, 90)
         y += 150
     s.append(
-        f'<text x="{x_name}" y="{H - 16}" class="m" font-size="11">Ground truth: 1080p crops of Pepper&amp;Carrot (David Revoy, CC BY 4.0), '
-        f"downscaled 2× then upscaled back. Fidelity = PSNR vs the original GLSL shaders (libplacebo).</text>"
+        f'<text x="{x_name}" y="{H - 34}" class="m" font-size="11">Ground truth: 1080p crops of Pepper&amp;Carrot (D. Revoy, CC BY 4.0), '
+        f"downscaled 2× then upscaled. PSNR/SSIM measure closeness, not sharpness.</text>"
+        f'<text x="{x_name}" y="{H - 16}" class="m" font-size="11">Fidelity = PSNR of our native engine vs the original GLSL shaders run by libplacebo. '
+        f"Reliability = runs ok, and bit-identical output on two runs.</text>"
     )
     s.append("</svg>")
     return "\n".join(s)
