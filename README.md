@@ -22,7 +22,7 @@ The neural networks are **not modified**: same layers, same weights, same pipeli
 |---|---|---|
 | Where it runs | GLSL shaders inside mpv, on the GPU, while you watch | A CLI that writes a new video file |
 | GPU engine | mpv / libplacebo | `--moteur libplacebo`: the same shaders through ffmpeg + libplacebo (Vulkan) |
-| CPU engine | none | `--moteur natif` (default): a pure-Rust interpreter of the shader files, no dependencies |
+| CPU engine | none | `--moteur natif` (default): a pure-Rust interpreter of the shader files (only dependency: the `png` crate) |
 | Modes | key bindings in `input.conf` | `--preset A`, `B`, `C`, `A+A`, `B+B`, `C+A` (same chains as the official HQ modes) |
 | Output size | screen size | `--hauteur N` (default 2160), width follows the aspect ratio |
 | Output file | none | HEVC 10-bit (libx265, CRF 20) by default, or NVENC / AV1 via `--encodeur`; audio, subtitles, attachments and chapters copied |
@@ -77,6 +77,7 @@ cargo build --release
 anime4k-rs episode.mkv                                 # preset A, 2160p, native CPU engine
 anime4k-rs episode.mkv --preset B+B --hauteur 1440     # lighter file for a phone
 anime4k-rs episode.mkv --moteur libplacebo             # on a machine with a GPU (much faster)
+anime4k-rs image.png --preset C --hauteur 2160         # PNG in, PNG out, in memory (no ffmpeg)
 ```
 
 | Option | Default | Meaning |

@@ -343,7 +343,7 @@ fn clamp(img: &Tex, stat: &Tex) -> Tex {
     out
 }
 
-fn reechantillonner(src: &Tex, w: usize, h: usize) -> Tex {
+pub fn reechantillonner(src: &Tex, w: usize, h: usize) -> Tex {
     let tx = Taps::new(src.w, w);
     let mut out = Tex::new(w, h);
     par_lignes(&mut out, |y, ligne| for c in 0..4 { bil_ligne(src, c, y, h, &tx, &mut ligne[c * w..][..w], false) });

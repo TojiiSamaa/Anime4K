@@ -22,7 +22,7 @@ Les réseaux de neurones **ne sont pas modifiés** : mêmes couches, mêmes poid
 |---|---|---|
 | Où ça tourne | shaders GLSL dans mpv, sur le GPU, pendant la lecture | un outil en ligne de commande qui écrit une nouvelle vidéo |
 | Moteur GPU | mpv / libplacebo | `--moteur libplacebo` : les mêmes shaders via ffmpeg + libplacebo (Vulkan) |
-| Moteur CPU | aucun | `--moteur natif` (défaut) : interpréteur des shaders en Rust pur, sans dépendance |
+| Moteur CPU | aucun | `--moteur natif` (défaut) : interpréteur des shaders en Rust pur (seule dépendance : le crate `png`) |
 | Modes | raccourcis dans `input.conf` | `--preset A`, `B`, `C`, `A+A`, `B+B`, `C+A` (mêmes chaînes que les modes HQ officiels) |
 | Taille de sortie | taille de l'écran | `--hauteur N` (2160 par défaut), la largeur suit les proportions |
 | Fichier de sortie | aucun | HEVC 10 bits (libx265, CRF 20) par défaut, ou NVENC / AV1 via `--encodeur` ; son, sous-titres, pièces jointes et chapitres recopiés |
@@ -77,6 +77,7 @@ cargo build --release
 anime4k-rs episode.mkv                                 # preset A, 2160p, moteur natif (CPU)
 anime4k-rs episode.mkv --preset B+B --hauteur 1440     # fichier plus léger pour un téléphone
 anime4k-rs episode.mkv --moteur libplacebo             # sur une machine avec GPU (bien plus rapide)
+anime4k-rs image.png --preset C --hauteur 2160         # PNG vers PNG, en mémoire (sans ffmpeg)
 ```
 
 | Option | Défaut | Rôle |
