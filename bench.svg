@@ -1,0 +1,58 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="334" viewBox="0 0 900 334" font-family="Inter,Segoe UI,Helvetica,Arial,sans-serif">
+<style>
+:root{--bg:#ffffff;--fg:#1f2328;--mut:#656d76;--line:#d0d7de;--ours:#e8590c;--theirs:#1f6feb;--ref:#8250df;--base:#8c959f;--ok:#1a7f37;--bad:#cf222e}
+@media (prefers-color-scheme:dark){:root{--bg:#0d1117;--fg:#e6edf3;--mut:#8d96a0;--line:#30363d;--ours:#ff8a3d;--theirs:#58a6ff;--ref:#bc8cff;--base:#6e7681;--ok:#3fb950;--bad:#f85149}}
+.t{fill:var(--fg)}.m{fill:var(--mut)}.b{font-weight:600}
+</style>
+<rect width="900" height="334" rx="12" fill="var(--bg)" stroke="var(--line)"/>
+<text x="24" y="40" class="t b" font-size="22">anime4k-rs benchmark</text>
+<text x="24" y="64" class="m" font-size="13">960x540 → 1920x1080 · preset A · 3 frames · AMD EPYC 7763 64-Core Processor (4 threads) · 2026-11-06 · f8f1058</text>
+<text x="24" y="92" class="m" font-size="11" letter-spacing=".04em">IMPLEMENTATION</text>
+<text x="300" y="92" class="m" font-size="11" letter-spacing=".04em">TIME PER IMAGE</text>
+<text x="560" y="92" class="m" font-size="11" letter-spacing=".04em">PSNR</text>
+<text x="640" y="92" class="m" font-size="11" letter-spacing=".04em">SSIM</text>
+<text x="710" y="92" class="m" font-size="11" letter-spacing=".04em">FIDELITY</text>
+<text x="790" y="92" class="m" font-size="11" letter-spacing=".04em">RELIABILITY</text>
+<line x1="24" x2="876" y1="104" y2="104" stroke="var(--line)"/>
+<rect x="24" y="118" width="4" height="20" rx="2" fill="var(--base)"/>
+<text x="38" y="128" class="t b" font-size="14">bicubic (ffmpeg)</text>
+<text x="38" y="144" class="m" font-size="11">baseline · -</text>
+<rect x="300" y="119" width="20.1" height="16" rx="4" fill="var(--base)" opacity=".9"/>
+<text x="326.1" y="132" class="t" font-size="12">248 ms</text>
+<text x="560" y="132" class="t b" font-size="13">34.42 dB</text>
+<text x="640" y="132" class="t" font-size="13">0.9622</text>
+<text x="710" y="132" class="t" font-size="13">—</text>
+<text x="790" y="132" font-size="13" fill="var(--ok)">✓ 6/6 ok · det.</text>
+<line x1="24" x2="876" y1="150" y2="150" stroke="var(--line)"/>
+<rect x="24" y="164" width="4" height="20" rx="2" fill="var(--ref)"/>
+<text x="38" y="174" class="t b" font-size="14">Anime4K GLSL via libplacebo</text>
+<text x="38" y="190" class="m" font-size="11">reference · f8f1058</text>
+<rect x="300" y="165" width="220.0" height="16" rx="4" fill="var(--ref)" opacity=".9"/>
+<text x="526.0" y="178" class="t" font-size="12">2.71 s</text>
+<text x="560" y="178" class="t" font-size="13">33.68 dB</text>
+<text x="640" y="178" class="t" font-size="13">0.9462</text>
+<text x="710" y="178" class="t" font-size="13">—</text>
+<text x="790" y="178" font-size="13" fill="var(--ok)">✓ 6/6 ok · det.</text>
+<line x1="24" x2="876" y1="196" y2="196" stroke="var(--line)"/>
+<rect x="24" y="210" width="4" height="20" rx="2" fill="var(--ours)"/>
+<text x="38" y="220" class="t b" font-size="14">anime4k-rs (native)</text>
+<text x="38" y="236" class="m" font-size="11">this repo · f8f1058</text>
+<rect x="300" y="211" width="34.6" height="16" rx="4" fill="var(--ours)" opacity=".9"/>
+<text x="340.6" y="224" class="t" font-size="12">426 ms</text>
+<text x="560" y="224" class="t" font-size="13">33.70 dB</text>
+<text x="640" y="224" class="t" font-size="13">0.9460</text>
+<text x="710" y="224" class="t" font-size="13">56.0 dB</text>
+<text x="790" y="224" font-size="13" fill="var(--ok)">✓ 6/6 ok · det.</text>
+<line x1="24" x2="876" y1="242" y2="242" stroke="var(--line)"/>
+<rect x="24" y="256" width="4" height="20" rx="2" fill="var(--theirs)"/>
+<text x="38" y="266" class="t b" font-size="14">andraantariksa/Anime4K-rs</text>
+<text x="38" y="282" class="m" font-size="11">Rust port · v0.2</text>
+<rect x="300" y="257" width="11.4" height="16" rx="4" fill="var(--theirs)" opacity=".9"/>
+<text x="317.4" y="270" class="t" font-size="12">140 ms</text>
+<text x="560" y="270" class="t" font-size="13">32.49 dB</text>
+<text x="640" y="270" class="t" font-size="13">0.9428</text>
+<text x="710" y="270" class="t" font-size="13">—</text>
+<text x="790" y="270" font-size="13" fill="var(--ok)">✓ 6/6 ok · det.</text>
+<line x1="24" x2="876" y1="288" y2="288" stroke="var(--line)"/>
+<text x="24" y="318" class="m" font-size="11">Ground truth: 1080p crops of Pepper&amp;Carrot (David Revoy, CC BY 4.0), downscaled 2× then upscaled back. Fidelity = PSNR vs the original GLSL shaders (libplacebo).</text>
+</svg>
