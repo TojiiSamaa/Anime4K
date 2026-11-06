@@ -149,15 +149,19 @@ fn rpn(e: &str, taille: impl Fn(&str, char) -> f64) -> f64 {
     p.pop().unwrap()
 }
 
-/// Découpe les lignes de `out` entre les cœurs (std seulement).
+/// Répartit les lignes de `out` entre les cœurs par paquets pris à la demande (vol de travail
+/// façon rayon, std seulement) : un cœur ralenti par un voisin ne retarde plus toute la passe.
 pub fn par_lignes(out: &mut Tex, f: impl Fn(usize, &mut [f32]) + Sync) {
+    const PAQUET: usize = 8;
     let pas = out.w * 4;
     let n = std::thread::available_parallelism().map_or(1, |n| n.get());
-    let lignes_par = out.h.div_ceil(n);
+    let file = std::sync::Mutex::new(out.d.chunks_mut(PAQUET * pas).enumerate());
     std::thread::scope(|s| {
-        for (k, bloc) in out.d.chunks_mut(lignes_par * pas).enumerate() {
-            let f = &f;
-            s.spawn(move || for (j, ligne) in bloc.chunks_mut(pas).enumerate() { f(k * lignes_par + j, ligne) });
+        for _ in 0..n.min(out.h.div_ceil(PAQUET)) {
+            s.spawn(|| loop {
+                let Some((k, bloc)) = file.lock().unwrap().next() else { break };
+                for (j, ligne) in bloc.chunks_mut(pas).enumerate() { f(k * PAQUET + j, ligne) }
+            });
         }
     });
 }
