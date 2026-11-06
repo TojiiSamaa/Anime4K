@@ -98,8 +98,10 @@ jobs:
           mkdir -p bench/history bench/history-degraded
           cp result-clean.json "bench/history/$id.json"
           cp result-degraded.json "bench/history-degraded/$id.json"
+          cp result-clean.json bench/latest.json            # read by the results page (bench/index.html)
+          cp result-degraded.json bench/latest-degraded.json
           python3 bench/render.py result-clean.json --history bench/history --svg bench/bench.svg --md bench/latest.md
           python3 bench/render.py result-degraded.json --history bench/history-degraded --svg bench/bench-degraded.svg --md bench/latest-degraded.md
-          git add bench/history bench/history-degraded bench/bench.svg bench/bench-degraded.svg bench/latest.md bench/latest-degraded.md
+          git add bench/history bench/history-degraded bench/latest.json bench/latest-degraded.json bench/bench.svg bench/bench-degraded.svg bench/latest.md bench/latest-degraded.md
           git commit -qm "bench: $(git rev-parse --short HEAD) [skip ci]"
           git pull -q --rebase origin main && git push -q origin HEAD:main

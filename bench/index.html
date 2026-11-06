@@ -45,7 +45,9 @@
 </main>
 <script>
 const REPO = "TojiiSamaa/anime4k-rs", API = `https://api.github.com/repos/${REPO}`;
-const SOURCES = [["history", "Clean source"], ["history-degraded", "Blurred + H.264 source"]];
+// raw.githubusercontent.com: no API rate limit (60 req/h per IP), CORS allowed
+const RAW = `https://raw.githubusercontent.com/${REPO}/main/bench`;
+const SOURCES = [["latest.json", "Clean source"], ["latest-degraded.json", "Blurred + H.264 source"]];
 // higher is better, except time
 const COLS = [["ms", "ms / image", 0, false], ["psnr", "PSNR vs ground truth", 2, true], ["ssim", "SSIM", 4, true], ["fidelity_psnr", "Fidelity vs GLSL", 2, true], ["rel", "Reliability", 0, true]];
 let data = [], key = "ms", asc = true;
@@ -90,11 +92,9 @@ document.querySelectorAll("[data-k]").forEach(b => b.onclick = () => {
 
 async function load() {
   try {
-    data = (await Promise.all(SOURCES.map(async ([dir, title]) => {
-      const ls = await (await fetch(`${API}/contents/bench/${dir}?ref=main`)).json();
-      if (!Array.isArray(ls) || !ls.length) return null;
-      const last = ls.filter(f => f.name.endsWith(".json")).sort((a, b) => a.name < b.name ? 1 : -1)[0];
-      return { title, r: await (await fetch(last.download_url)).json() };
+    data = (await Promise.all(SOURCES.map(async ([file, title]) => {
+      const res = await fetch(`${RAW}/${file}`, { cache: "no-cache" });
+      return res.ok ? { title, r: await res.json() } : null;
     }))).filter(Boolean);
     render();
   } catch (e) { document.getElementById("out").innerHTML = `<p class="note bad">Could not load results (${esc(e.message)}).</p>`; }
