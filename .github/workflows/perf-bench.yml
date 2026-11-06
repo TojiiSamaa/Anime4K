@@ -40,11 +40,11 @@ jobs:
       - uses: actions/cache@v4
         with:
           path: |
-            bench/.cache/sintel_trailer-1080p.mp4
+            bench/.cache/*.jpg
             bench/.cache/shaders
             ~/.cargo/registry
             ~/.cargo/git
-          key: bench-inputs-v1
+          key: bench-inputs-v2
 
       - name: Tests
         run: |

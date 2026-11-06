@@ -58,7 +58,7 @@ def markdown(r, base=None):
         ]
     out += [
         "",
-        "_Ground truth: Sintel 1080p frames (© Blender Foundation, CC BY 3.0) downscaled 2× then upscaled back. "
+        "_Ground truth: 1080p crops of Pepper&Carrot (David Revoy, CC BY 4.0) downscaled 2× then upscaled back. PSNR/SSIM reward closeness, not perceived sharpness. "
         "Fidelity = PSNR between our native engine and the original shaders run by libplacebo (higher = closer)._",
     ]
     return "\n".join(out)
@@ -165,7 +165,7 @@ def svg(r, hist):
         s += spark(hist, x_name, y + 30, W - 48, 90)
         y += 150
     s.append(
-        f'<text x="{x_name}" y="{H - 16}" class="m" font-size="11">Ground truth: Sintel 1080p frames (© Blender Foundation, CC BY 3.0), '
+        f'<text x="{x_name}" y="{H - 16}" class="m" font-size="11">Ground truth: 1080p crops of Pepper&amp;Carrot (David Revoy, CC BY 4.0), '
         f"downscaled 2× then upscaled back. Fidelity = PSNR vs the original GLSL shaders (libplacebo).</text>"
     )
     s.append("</svg>")

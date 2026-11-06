@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """Benchmark anime4k-rs against other implementations on the same frames.
 
-Ground truth: 1080p frames of Sintel (Blender Foundation, CC BY 3.0), downscaled
-2x (bicubic), upscaled back 2x by every implementation and compared with the
-original frame (PSNR / SSIM).  Also measured: time per image, determinism (two
+Ground truth: 1920x1080 crops of Pepper&Carrot (David Revoy, CC BY 4.0, 2D
+illustration), downscaled 2x (bicubic), upscaled back 2x by every implementation
+and compared with the original crop (PSNR / SSIM).  Also measured: time per image, determinism (two
 runs, same hash), success rate and, for our native engine, fidelity to the
 reference path (libplacebo running the original GLSL shaders).
 
@@ -17,12 +17,38 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 CACHE = ROOT / "bench" / ".cache"
 WORK = CACHE / "work"
-VIDEO_URL = "https://download.blender.org/durian/trailer/sintel_trailer-1080p.mp4"
+PC = "https://www.peppercarrot.com/0_sources/"
+# (name, url, y offset of the 1920x1080 crop once scaled to 1920 wide)
+SOURCES = [
+    (
+        "E01P01",
+        PC
+        + "ep01_Potion-of-Flight/hi-res/en_Pepper-and-Carrot_by-David-Revoy_E01P01.jpg",
+        300,
+    ),
+    (
+        "E01P02",
+        PC
+        + "ep01_Potion-of-Flight/hi-res/en_Pepper-and-Carrot_by-David-Revoy_E01P02.jpg",
+        900,
+    ),
+    (
+        "E01P03",
+        PC
+        + "ep01_Potion-of-Flight/hi-res/en_Pepper-and-Carrot_by-David-Revoy_E01P03.jpg",
+        1400,
+    ),
+    (
+        "cover",
+        PC
+        + "0ther/artworks/hi-res/2016-02-24_vertical-cover_remake_by-David-Revoy.jpg",
+        700,
+    ),
+]
 SHADERS_URL = (
     "https://github.com/bloc97/Anime4K/releases/download/v4.0.1/Anime4K_v4.0.zip"
 )
 THEIRS_REPO = "https://github.com/andraantariksa/Anime4K-rs"
-TIMES = ["00:00:09", "00:00:21", "00:00:33", "00:00:41", "00:00:47"]
 GT_W, GT_H = 1920, 1080
 
 
@@ -88,30 +114,29 @@ def raw_to_png(raw, png):
 
 def frames(n):
     CACHE.mkdir(parents=True, exist_ok=True)
-    video = CACHE / "sintel_trailer-1080p.mp4"
-    if not video.exists():
-        sh("curl", "-fsSL", "-o", video, VIDEO_URL)
     shaders = CACHE / "shaders"
     if not (shaders / "Anime4K_Upscale_CNN_x2_VL.glsl").exists():
         sh("curl", "-fsSL", "-o", CACHE / "shaders.zip", SHADERS_URL)
         sh("unzip", "-qo", CACHE / "shaders.zip", "-d", shaders)
     out = []
-    for i, t in enumerate(TIMES[:n]):
-        gt, low = CACHE / f"gt{i}.png", CACHE / f"low{i}.png"
+    for name, url, y in SOURCES[:n]:
+        src, gt, low = (
+            CACHE / f"{name}.jpg",
+            CACHE / f"gt-{name}.png",
+            CACHE / f"low-{name}.png",
+        )
         if not low.exists():
+            if not src.exists():
+                sh("curl", "-fsSL", "-o", src, url)
             sh(
                 "ffmpeg",
                 "-hide_banner",
                 "-loglevel",
                 "error",
-                "-ss",
-                t,
                 "-i",
-                video,
-                "-frames:v",
-                "1",
+                src,
                 "-vf",
-                f"scale={GT_W}:{GT_H},format=rgb24",
+                f"scale={GT_W}:-1:flags=lanczos,crop={GT_W}:{GT_H}:0:{y},format=rgb24",
                 "-y",
                 gt,
             )
