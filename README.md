@@ -4,7 +4,10 @@
     <img src="bench/bench-degraded.svg" alt="Same benchmark on a blurred, H.264-compressed source" width="900">
   </a>
 </p>
-<p align="center"><a href="https://tojiisamaa.github.io/anime4k-rs/bench/">Sortable results and re-run button</a></p>
+<p align="center">
+  <a href="https://tojiisamaa.github.io/anime4k-rs/bench/"><img src="https://img.shields.io/badge/Results%20(sortable)-sort%20by%20PSNR%20%C2%B7%20SSIM%20%C2%B7%20fidelity-0969da?style=for-the-badge" alt="sortable results"></a>
+  <a href="https://github.com/TojiiSamaa/anime4k-rs/actions/workflows/perf-bench.yml"><img src="https://img.shields.io/badge/Re--run%20the%20bench-Run%20workflow-1a7f37?style=for-the-badge&logo=githubactions&logoColor=white" alt="re-run the bench"></a>
+</p>
 
 # anime4k-rs
 
