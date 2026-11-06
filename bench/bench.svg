@@ -6,7 +6,7 @@
 </style>
 <rect width="900" height="528" rx="12" fill="var(--bg)" stroke="var(--line)"/>
 <text x="24" y="40" class="t b" font-size="22">anime4k-rs benchmark · clean source</text>
-<text x="24" y="64" class="m" font-size="13">960x540 → 1920x1080 · preset C · 3 images · AMD EPYC 7763 64-Core Processor (4 threads) · 2026-11-06 · 71b5eec</text>
+<text x="24" y="64" class="m" font-size="13">960x540 → 1920x1080 · preset C · 3 images · AMD EPYC 9V45 96-Core Processor (4 threads) · 2026-11-06 · 9d3ec42</text>
 <text x="24" y="92" class="m" font-size="11" letter-spacing=".04em">IMPLEMENTATION</text>
 <text x="300" y="92" class="m" font-size="11" letter-spacing=".04em">TIME PER IMAGE</text>
 <text x="560" y="92" class="m" font-size="11" letter-spacing=".04em">PSNR</text>
@@ -17,8 +17,8 @@
 <rect x="24" y="118" width="4" height="20" rx="2" fill="var(--base)"/>
 <text x="38" y="128" class="t b" font-size="14">bicubic (ffmpeg)</text>
 <text x="38" y="144" class="m" font-size="11">baseline · -</text>
-<rect x="300" y="119" width="28.3" height="16" rx="4" fill="var(--base)" opacity=".9"/>
-<text x="334.3" y="132" class="t" font-size="12">251 ms</text>
+<rect x="300" y="119" width="32.4" height="16" rx="4" fill="var(--base)" opacity=".9"/>
+<text x="338.4" y="132" class="t" font-size="12">168 ms</text>
 <text x="560" y="132" class="t" font-size="13">34.42 dB</text>
 <text x="640" y="132" class="t" font-size="13">0.9622</text>
 <text x="710" y="132" class="t" font-size="13">—</text>
@@ -26,9 +26,9 @@
 <line x1="24" x2="876" y1="150" y2="150" stroke="var(--line)"/>
 <rect x="24" y="164" width="4" height="20" rx="2" fill="var(--ref)"/>
 <text x="38" y="174" class="t b" font-size="14">Anime4K GLSL via libplacebo</text>
-<text x="38" y="190" class="m" font-size="11">reference · 71b5eec</text>
+<text x="38" y="190" class="m" font-size="11">reference · 9d3ec42</text>
 <rect x="300" y="165" width="180.0" height="16" rx="4" fill="var(--ref)" opacity=".9"/>
-<text x="486.0" y="178" class="t" font-size="12">1.59 s</text>
+<text x="486.0" y="178" class="t" font-size="12">933 ms</text>
 <text x="560" y="178" class="t b" font-size="13">38.60 dB</text>
 <text x="640" y="178" class="t" font-size="13">0.9711</text>
 <text x="710" y="178" class="t" font-size="13">—</text>
@@ -36,9 +36,9 @@
 <line x1="24" x2="876" y1="196" y2="196" stroke="var(--line)"/>
 <rect x="24" y="210" width="4" height="20" rx="2" fill="var(--ours)"/>
 <text x="38" y="220" class="t b" font-size="14">anime4k-rs (native)</text>
-<text x="38" y="236" class="m" font-size="11">this repo · 71b5eec</text>
-<rect x="300" y="211" width="22.4" height="16" rx="4" fill="var(--ours)" opacity=".9"/>
-<text x="328.4" y="224" class="t" font-size="12">198 ms</text>
+<text x="38" y="236" class="m" font-size="11">this repo · 9d3ec42</text>
+<rect x="300" y="211" width="21.9" height="16" rx="4" fill="var(--ours)" opacity=".9"/>
+<text x="327.9" y="224" class="t" font-size="12">113 ms</text>
 <text x="560" y="224" class="t" font-size="13">38.58 dB</text>
 <text x="640" y="224" class="t" font-size="13">0.9712</text>
 <text x="710" y="224" class="t" font-size="13">67.1 dB</text>
@@ -46,9 +46,9 @@
 <line x1="24" x2="876" y1="242" y2="242" stroke="var(--line)"/>
 <rect x="24" y="256" width="4" height="20" rx="2" fill="var(--ours)"/>
 <text x="38" y="266" class="t b" font-size="14">anime4k-rs (native, size S)</text>
-<text x="38" y="282" class="m" font-size="11">this repo, fast · 71b5eec</text>
-<rect x="300" y="257" width="8.1" height="16" rx="4" fill="var(--ours)" opacity=".9"/>
-<text x="314.1" y="270" class="t" font-size="12">72 ms</text>
+<text x="38" y="282" class="m" font-size="11">this repo, fast · 9d3ec42</text>
+<rect x="300" y="257" width="8.6" height="16" rx="4" fill="var(--ours)" opacity=".9"/>
+<text x="314.6" y="270" class="t" font-size="12">44 ms</text>
 <text x="560" y="270" class="t" font-size="13">37.11 dB</text>
 <text x="640" y="270" class="t" font-size="13">0.9652</text>
 <text x="710" y="270" class="t" font-size="13">—</text>
@@ -57,29 +57,32 @@
 <rect x="24" y="302" width="4" height="20" rx="2" fill="var(--theirs)"/>
 <text x="38" y="312" class="t b" font-size="14">andraantariksa/Anime4K-rs</text>
 <text x="38" y="328" class="m" font-size="11">Rust port · v0.2</text>
-<rect x="300" y="303" width="15.8" height="16" rx="4" fill="var(--theirs)" opacity=".9"/>
-<text x="321.8" y="316" class="t" font-size="12">140 ms</text>
+<rect x="300" y="303" width="16.7" height="16" rx="4" fill="var(--theirs)" opacity=".9"/>
+<text x="322.7" y="316" class="t" font-size="12">86 ms</text>
 <text x="560" y="316" class="t" font-size="13">32.49 dB</text>
 <text x="640" y="316" class="t" font-size="13">0.9428</text>
 <text x="710" y="316" class="t" font-size="13">—</text>
 <text x="790" y="316" font-size="13" fill="var(--ok)">✓ 6/6 ok · det.</text>
 <line x1="24" x2="876" y1="334" y2="334" stroke="var(--line)"/>
 <text x="24" y="356" class="m" font-size="11" letter-spacing=".04em">HISTORY · NATIVE ENGINE · TIME (BARS) AND PSNR (LINE)</text>
-<rect x="58.1" y="382.2" width="102.2" height="51.8" rx="3" fill="var(--ours)" opacity=".35"/>
-<text x="109.2" y="448" class="m" font-size="10" text-anchor="middle">fd3fa22</text>
-<text x="109.2" y="414.0" class="t" font-size="10" text-anchor="middle">33.70</text>
-<rect x="228.5" y="374.0" width="102.2" height="60.0" rx="3" fill="var(--ours)" opacity=".35"/>
-<text x="279.6" y="448" class="m" font-size="10" text-anchor="middle">a394281</text>
-<text x="279.6" y="414.0" class="t" font-size="10" text-anchor="middle">33.70</text>
-<rect x="398.9" y="390.9" width="102.2" height="43.1" rx="3" fill="var(--ours)" opacity=".35"/>
-<text x="450.0" y="448" class="m" font-size="10" text-anchor="middle">23d7f23</text>
-<text x="450.0" y="364.0" class="t" font-size="10" text-anchor="middle">38.62</text>
-<rect x="569.3" y="418.0" width="102.2" height="16.0" rx="3" fill="var(--ours)" opacity=".35"/>
-<text x="620.4" y="448" class="m" font-size="10" text-anchor="middle">de78f46</text>
-<text x="620.4" y="364.4" class="t" font-size="10" text-anchor="middle">38.58</text>
-<rect x="739.7" y="406.9" width="102.2" height="27.1" rx="3" fill="var(--ours)" opacity=".35"/>
-<text x="790.8" y="448" class="m" font-size="10" text-anchor="middle">71b5eec</text>
-<text x="790.8" y="364.4" class="t" font-size="10" text-anchor="middle">38.58</text>
-<polyline points="109.2,420.0 279.6,420.0 450.0,370.0 620.4,370.4 790.8,370.4" fill="none" stroke="var(--ours)" stroke-width="2"/>
+<rect x="52.4" y="382.2" width="85.2" height="51.8" rx="3" fill="var(--ours)" opacity=".35"/>
+<text x="95.0" y="448" class="m" font-size="10" text-anchor="middle">fd3fa22</text>
+<text x="95.0" y="414.0" class="t" font-size="10" text-anchor="middle">33.70</text>
+<rect x="194.4" y="374.0" width="85.2" height="60.0" rx="3" fill="var(--ours)" opacity=".35"/>
+<text x="237.0" y="448" class="m" font-size="10" text-anchor="middle">a394281</text>
+<text x="237.0" y="414.0" class="t" font-size="10" text-anchor="middle">33.70</text>
+<rect x="336.4" y="390.9" width="85.2" height="43.1" rx="3" fill="var(--ours)" opacity=".35"/>
+<text x="379.0" y="448" class="m" font-size="10" text-anchor="middle">23d7f23</text>
+<text x="379.0" y="364.0" class="t" font-size="10" text-anchor="middle">38.62</text>
+<rect x="478.4" y="418.0" width="85.2" height="16.0" rx="3" fill="var(--ours)" opacity=".35"/>
+<text x="521.0" y="448" class="m" font-size="10" text-anchor="middle">de78f46</text>
+<text x="521.0" y="364.4" class="t" font-size="10" text-anchor="middle">38.58</text>
+<rect x="620.4" y="406.9" width="85.2" height="27.1" rx="3" fill="var(--ours)" opacity=".35"/>
+<text x="663.0" y="448" class="m" font-size="10" text-anchor="middle">71b5eec</text>
+<text x="663.0" y="364.4" class="t" font-size="10" text-anchor="middle">38.58</text>
+<rect x="762.4" y="418.5" width="85.2" height="15.5" rx="3" fill="var(--ours)" opacity=".35"/>
+<text x="805.0" y="448" class="m" font-size="10" text-anchor="middle">9d3ec42</text>
+<text x="805.0" y="364.4" class="t" font-size="10" text-anchor="middle">38.58</text>
+<polyline points="95.0,420.0 237.0,420.0 379.0,370.0 521.0,370.4 663.0,370.4 805.0,370.4" fill="none" stroke="var(--ours)" stroke-width="2"/>
 <text x="24" y="494" class="m" font-size="11">Ground truth: 1080p crops of Pepper&amp;Carrot (D. Revoy, CC BY 4.0), downscaled 2× then upscaled. PSNR/SSIM measure closeness, not sharpness.</text><text x="24" y="512" class="m" font-size="11">Fidelity = PSNR of our native engine vs the original GLSL shaders run by libplacebo. Reliability = runs ok, and bit-identical output on two runs.</text>
 </svg>
