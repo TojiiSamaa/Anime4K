@@ -316,8 +316,8 @@ def main():
         run = lambda engine, *extra: (
             lambda low, out: timed(
                 exe,
-                *extra,
                 low,
+                *extra,
                 "--preset",
                 a.preset,
                 "--hauteur",
