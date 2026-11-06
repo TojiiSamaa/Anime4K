@@ -313,9 +313,10 @@ def main():
                 }
             )
             continue
-        run = lambda engine: (
+        run = lambda engine, *extra: (
             lambda low, out: timed(
                 exe,
+                *extra,
                 low,
                 "--preset",
                 a.preset,
@@ -362,6 +363,9 @@ def main():
                 else None,
             )
         )
+        # Smallest Anime4K networks (S): the speed/quality trade-off, current commit only (--taille S is new).
+        if ref == a.ours.split()[-1]:
+            add(run_case("anime4k-rs (native, size S)", v, "ours-fast", imgs, run("natif", "--taille", "S"), ".raw"))
 
     theirs = CACHE / "Anime4K-rs"
     if not theirs.exists():

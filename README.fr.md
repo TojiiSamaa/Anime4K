@@ -4,6 +4,7 @@
     <img src="bench/bench-degraded.svg" alt="Même banc sur une source floutée et compressée en H.264" width="900">
   </a>
 </p>
+<p align="center"><a href="https://tojiisamaa.github.io/anime4k-rs/bench/">Résultats triables et bouton de relance</a></p>
 
 # anime4k-rs
 
@@ -84,7 +85,7 @@ anime4k-rs image.png --preset C --hauteur 2160         # PNG vers PNG, en mémoi
 |---|---|---|
 | `--preset` | `A` | `A`, `B`, `C`, `A+A`, `B+B`, `C+A` |
 | `--hauteur` | `2160` | hauteur de sortie (la largeur suit) |
-| `--taille` | `VL` | `VL` (modes HQ officiels) ou `UL` : les plus gros réseaux d'Anime4K, environ +0,4 dB et ~2× plus lents |
+| `--taille` | `VL` | `VL` (modes HQ officiels) ; `S`, `M`, `L` : réseaux plus petits, 2 à 3× plus rapides pour −0,4 à −1,5 dB (`S` bat encore l'autre portage Rust sur les deux sources du banc) ; `UL` : les plus gros réseaux d'Anime4K, environ +0,4 dB et ~2× plus lents |
 | `--sortie` | `<entrée>.anime4k-<preset>.mkv` | fichier de sortie |
 | `--moteur` | `natif` | `natif` (CPU) ou `libplacebo` (GPU via Vulkan) |
 | `--gpu` | première carte Vulkan | carte graphique qui fait le rendu : son numéro ou une partie de son nom (`--gpu 1`, `--gpu "RTX 5080"`). Implique `--moteur libplacebo` |

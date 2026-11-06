@@ -10,12 +10,14 @@ from xml.sax.saxutils import escape
 
 COLORS = {
     "ours": "var(--ours)",
+    "ours-fast": "var(--ours)",
     "theirs": "var(--theirs)",
     "reference": "var(--ref)",
     "baseline": "var(--base)",
 }
 KIND = {
     "ours": "this repo",
+    "ours-fast": "this repo, fast",
     "theirs": "Rust port",
     "reference": "reference",
     "baseline": "baseline",

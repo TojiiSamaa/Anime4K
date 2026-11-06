@@ -22,7 +22,7 @@ fn preset(nom: &str) -> Option<&'static [&'static str]> {
 
 fn quitter(msg: &str) -> ! { eprintln!("{msg}"); std::process::exit(1) }
 fn usage() -> ! {
-    quitter("usage :\n  anime4k-rs <entrée> [--preset A|B|C|A+A|B+B|C+A] [--hauteur 2160] [--sortie f.mkv] [--moteur natif|libplacebo] [--taille VL|UL] [--gpu N|nom] [--encodeur libx265|hevc_nvenc|av1_nvenc|...] [--qualite 20] [--debit 8M] [--images N] [--brut] [--shaders <dossier>]\n  anime4k-rs --lister-gpu\n  anime4k-rs comparer <a.raw> <b.raw>   (gbrpf32le, même taille)")
+    quitter("usage :\n  anime4k-rs <entrée> [--preset A|B|C|A+A|B+B|C+A] [--hauteur 2160] [--sortie f.mkv] [--moteur natif|libplacebo] [--taille S|M|L|VL|UL] [--gpu N|nom] [--encodeur libx265|hevc_nvenc|av1_nvenc|...] [--qualite 20] [--debit 8M] [--images N] [--brut] [--shaders <dossier>]\n  anime4k-rs --lister-gpu\n  anime4k-rs comparer <a.raw> <b.raw>   (gbrpf32le, même taille)")
 }
 
 /// (largeur, hauteur, images/s) du premier flux vidéo.
@@ -79,9 +79,9 @@ fn main() {
     let images = opt("--images");
     let enc_args = encodage(&opt("--encodeur").unwrap_or_else(|| "libx265".into()), opt("--qualite").as_deref(), opt("--debit").as_deref());
     let chaine = preset(&nom).unwrap_or_else(|| quitter(&format!("preset inconnu : {nom}")));
-    // --taille UL : les réseaux « ultra large » d'Anime4K à la place des VL (≈ +0,4 dB, ~2× plus lents).
+    // --taille : la taille des réseaux d'Anime4K à la place des VL (S, M, L plus rapides ; UL ≈ +0,4 dB, ~2× plus lent).
     let taille = opt("--taille").unwrap_or_else(|| "VL".into());
-    if taille != "VL" && taille != "UL" { quitter("--taille : VL ou UL") }
+    if !["S", "M", "L", "VL", "UL"].contains(&taille.as_str()) { quitter("--taille : S, M, L, VL ou UL") }
     let sources: Vec<String> = chaine.iter().map(|s| {
         let f = format!("{dossier}/Anime4K_{}.glsl", s.replace("_VL", &format!("_{taille}")));
         std::fs::read_to_string(&f).unwrap_or_else(|e| quitter(&format!("{f} : {e}")))
@@ -285,9 +285,11 @@ mod tests {
             let src: Vec<String> = super::preset(p).unwrap().iter()
                 .map(|s| std::fs::read_to_string(format!("{}/Anime4K_{s}.glsl", super::shaders())).expect("shader absent (ANIME4K_SHADERS ?)")).collect();
             super::moteur::Moteur::charger(&src); // panique sur toute ligne non reconnue
-            let ul: Vec<String> = super::preset(p).unwrap().iter()
-                .map(|s| std::fs::read_to_string(format!("{}/Anime4K_{}.glsl", super::shaders(), s.replace("_VL", "_UL"))).unwrap()).collect();
-            super::moteur::Moteur::charger(&ul);
+            for t in ["S", "M", "L", "UL"] {
+                let v: Vec<String> = super::preset(p).unwrap().iter()
+                    .map(|s| std::fs::read_to_string(format!("{}/Anime4K_{}.glsl", super::shaders(), s.replace("_VL", &format!("_{t}")))).unwrap()).collect();
+                super::moteur::Moteur::charger(&v);
+            }
         }
         assert!(super::preset("Z").is_none());
     }
