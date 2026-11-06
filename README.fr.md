@@ -24,7 +24,7 @@ Les réseaux de neurones **ne sont pas modifiés** : mêmes couches, mêmes poid
 | Moteur CPU | aucun | `--moteur natif` (défaut) : interpréteur des shaders en Rust pur, sans dépendance |
 | Modes | raccourcis dans `input.conf` | `--preset A`, `B`, `C`, `A+A`, `B+B`, `C+A` (mêmes chaînes que les modes HQ officiels) |
 | Taille de sortie | taille de l'écran | `--hauteur N` (2160 par défaut), la largeur suit les proportions |
-| Fichier de sortie | aucun | HEVC 10 bits (libx265, CRF 20) ; son, sous-titres, pièces jointes et chapitres recopiés |
+| Fichier de sortie | aucun | HEVC 10 bits (libx265, CRF 20) par défaut, ou NVENC / AV1 via `--encodeur` ; son, sous-titres, pièces jointes et chapitres recopiés |
 
 ### Le moteur natif, fonction par fonction (`src/moteur.rs`)
 
@@ -76,6 +76,9 @@ anime4k-rs episode.mkv --moteur libplacebo             # sur une machine avec GP
 | `--sortie` | `<entrée>.anime4k-<preset>.mkv` | fichier de sortie |
 | `--moteur` | `natif` | `natif` (CPU) ou `libplacebo` (GPU via Vulkan) |
 | `--gpu` | première carte Vulkan | carte graphique qui fait le rendu : son numéro ou une partie de son nom (`--gpu 1`, `--gpu "RTX 5080"`). Implique `--moteur libplacebo` |
+| `--encodeur` | `libx265` | n'importe quel encodeur vidéo de ffmpeg : `libx265`, `libsvtav1`, `libx264`, ou sur NVIDIA `hevc_nvenc`, `av1_nvenc`, `h264_nvenc` (bien plus rapides). 10 bits sauf en H.264 |
+| `--qualite` | `20` | qualité constante : CRF pour libx26x/SVT-AV1, CQ pour NVENC (plus bas = meilleur et plus lourd) |
+| `--debit` | aucun | débit cible à la place de la qualité constante (`--debit 8M`) |
 | `--images N` | toutes | s'arrêter après N images (tests) |
 | `--brut` | non | écrire des images `gbrpf32le` brutes au lieu d'une vidéo (bancs) |
 | `--shaders` | `$ANIME4K_SHADERS` ou `./shaders` | dossier des `.glsl` |

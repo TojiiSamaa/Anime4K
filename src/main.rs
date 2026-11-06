@@ -22,7 +22,7 @@ fn preset(nom: &str) -> Option<&'static [&'static str]> {
 
 fn quitter(msg: &str) -> ! { eprintln!("{msg}"); std::process::exit(1) }
 fn usage() -> ! {
-    quitter("usage :\n  anime4k-rs <entrée> [--preset A|B|C|A+A|B+B|C+A] [--hauteur 2160] [--sortie f.mkv] [--moteur natif|libplacebo] [--gpu N|nom] [--images N] [--brut] [--shaders <dossier>]\n  anime4k-rs --lister-gpu\n  anime4k-rs comparer <a.raw> <b.raw>   (gbrpf32le, même taille)")
+    quitter("usage :\n  anime4k-rs <entrée> [--preset A|B|C|A+A|B+B|C+A] [--hauteur 2160] [--sortie f.mkv] [--moteur natif|libplacebo] [--gpu N|nom] [--encodeur libx265|hevc_nvenc|av1_nvenc|...] [--qualite 20] [--debit 8M] [--images N] [--brut] [--shaders <dossier>]\n  anime4k-rs --lister-gpu\n  anime4k-rs comparer <a.raw> <b.raw>   (gbrpf32le, même taille)")
 }
 
 /// (largeur, hauteur, images/s) du premier flux vidéo.
@@ -77,6 +77,7 @@ fn main() {
     let moteur = opt("--moteur").unwrap_or_else(|| if gpu.is_some() { "libplacebo" } else { "natif" }.into());
     if gpu.is_some() && moteur != "libplacebo" { quitter("--gpu ne s'applique qu'au moteur libplacebo") }
     let images = opt("--images");
+    let enc_args = encodage(&opt("--encodeur").unwrap_or_else(|| "libx265".into()), opt("--qualite").as_deref(), opt("--debit").as_deref());
     let chaine = preset(&nom).unwrap_or_else(|| quitter(&format!("preset inconnu : {nom}")));
     let sources: Vec<String> = chaine.iter().map(|s| {
         let f = format!("{dossier}/Anime4K_{s}.glsl");
@@ -99,11 +100,15 @@ fn main() {
         std::fs::write(&glsl, sources.join("\n")).unwrap();
         // hwdownload refuse le float : référence brute via RGBA 16 bits puis conversion.
         let (fmt, fin) = if brut { ("rgba64le", ",format=gbrpf32le") } else { ("yuv420p10le", "") };
-        let vf = format!("hwupload,libplacebo=w={ow}:h={oh}:custom_shader_path={}:format={fmt},hwdownload,format={fmt}{fin}", glsl.display());
+        let vf = format!("hwupload,libplacebo=w={ow}:h={oh}:custom_shader_path='{}':format={fmt},hwdownload,format={fmt}{fin}",
+            // Windows : « C:\… » casse le graphe de filtres (« : » et « \ ») ; ffmpeg accepte les « / » et un « : » échappé entre quotes.
+            glsl.display().to_string().replace('\\', "/").replace(':', "\\:"));
         let mut c = Command::new("ffmpeg");
         let dev = gpu.as_ref().map_or("vulkan=vk".to_string(), |g| format!("vulkan=vk:{g}"));
         c.args(["-hide_banner", "-loglevel", "error", "-init_hw_device", &dev, "-filter_hw_device", "vk", "-i", &entree, "-vf", &vf]).args(&limite);
-        if brut { c.args(["-f", "rawvideo", "-y", &sortie]); } else { c.args(encodage()).args(["-y", &sortie]); }
+        if brut { c.args(["-f", "rawvideo", "-y", &sortie]); } else {
+            c.args(["-map", "0:v:0", "-map", "0:a?", "-map", "0:s?", "-map", "0:t?", "-map_chapters", "0"]).args(&enc_args).args(["-y", &sortie]);
+        }
         let ok = c.status().map(|s| s.success()).unwrap_or(false);
         let _ = std::fs::remove_file(&glsl);
         if !ok { quitter("échec ffmpeg/libplacebo") }
@@ -120,7 +125,7 @@ fn main() {
 
     let (tx, rx) = std::sync::mpsc::sync_channel::<(usize, usize, Vec<u8>)>(2);
     let enc = {
-        let (entree, sortie, fps) = (entree.clone(), sortie.clone(), fps.clone());
+        let (entree, sortie, fps, enc_args) = (entree.clone(), sortie.clone(), fps.clone(), enc_args.clone());
         std::thread::spawn(move || {
             let mut premier = rx.recv().ok();
             let Some((fw, fh, _)) = premier.as_ref().map(|p| (p.0, p.1, ())) else { return };
@@ -134,7 +139,7 @@ fn main() {
             let mut e = Command::new("ffmpeg")
                 .args(["-hide_banner", "-loglevel", "error", "-f", "rawvideo", "-pix_fmt", "gbrpf32le", "-s", &format!("{fw}x{fh}"), "-framerate", &fps, "-i", "-",
                     "-i", &entree, "-map", "0:v", "-map", "1:a?", "-map", "1:s?", "-map", "1:t?", "-map_metadata", "1", "-map_chapters", "1", "-vf", &vf])
-                .args(encodage()).args(["-colorspace", "bt709", "-color_primaries", "bt709", "-color_trc", "bt709", "-y", &sortie])
+                .args(&enc_args).args(["-colorspace", "bt709", "-color_primaries", "bt709", "-color_trc", "bt709", "-y", &sortie])
                 .stdin(Stdio::piped()).spawn().unwrap();
             let mut stdin = e.stdin.take().unwrap();
             while let Some((_, _, d)) = premier.take().or_else(|| rx.recv().ok()) {
@@ -183,12 +188,37 @@ fn main() {
     println!("{sortie} ({n} images en {:.1} s)", t0.elapsed().as_secs_f64());
 }
 
-fn encodage() -> [&'static str; 12] {
-    ["-c:v", "libx265", "-preset", "medium", "-crf", "20", "-pix_fmt", "yuv420p10le", "-c:a", "copy", "-c:s", "copy"]
+/// Arguments ffmpeg de l'encodeur vidéo : `--encodeur` (libx265 par défaut), `--qualite` (CRF/CQ, 20) ou `--debit` (ex. 8M).
+fn encodage(enc: &str, qualite: Option<&str>, debit: Option<&str>) -> Vec<String> {
+    let q = qualite.unwrap_or("20");
+    let nvenc = enc.ends_with("_nvenc");
+    // H.264 n'a pas de 10 bits matériel ; NVENC veut du p010 en 10 bits.
+    let pix = if enc.contains("264") { "yuv420p" } else if nvenc { "p010le" } else { "yuv420p10le" };
+    let mut a: Vec<&str> = vec!["-c:v", enc, "-pix_fmt", pix];
+    // shortcut: NVENC encode sur la 1re carte NVIDIA ; à relier à --gpu si quelqu'un a plusieurs cartes NVIDIA.
+    match (nvenc, debit) {
+        (true, Some(d)) => a.extend(["-preset", "p5", "-rc", "vbr", "-b:v", d]),
+        (true, None) => a.extend(["-preset", "p5", "-rc", "vbr", "-cq", q, "-b:v", "0"]),
+        (false, Some(d)) => a.extend(["-b:v", d]),
+        (false, None) if enc.starts_with("libx26") || enc == "libsvtav1" => a.extend(["-crf", q]),
+        _ => {}
+    }
+    if enc.starts_with("libx26") { a.extend(["-preset", "medium"]) }
+    a.extend(["-c:a", "copy", "-c:s", "copy"]);
+    a.into_iter().map(String::from).collect()
 }
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn options_encodeur() {
+        let j = |v: Vec<String>| v.join(" ");
+        assert!(j(super::encodage("libx265", None, None)).contains("-pix_fmt yuv420p10le -crf 20"));
+        assert!(j(super::encodage("hevc_nvenc", Some("24"), None)).contains("-pix_fmt p010le -preset p5 -rc vbr -cq 24 -b:v 0"));
+        assert!(j(super::encodage("h264_nvenc", None, Some("8M"))).contains("-pix_fmt yuv420p -preset p5 -rc vbr -b:v 8M"));
+        assert!(!j(super::encodage("libx264", None, Some("8M"))).contains("-crf"));
+    }
+
     #[test]
     fn presets_connus_et_analysables() {
         for p in ["A", "B", "C", "A+A", "B+B", "C+A"] {

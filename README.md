@@ -24,7 +24,7 @@ The neural networks are **not modified**: same layers, same weights, same pipeli
 | CPU engine | none | `--moteur natif` (default): a pure-Rust interpreter of the shader files, no dependencies |
 | Modes | key bindings in `input.conf` | `--preset A`, `B`, `C`, `A+A`, `B+B`, `C+A` (same chains as the official HQ modes) |
 | Output size | screen size | `--hauteur N` (default 2160), width follows the aspect ratio |
-| Output file | none | HEVC 10-bit (libx265, CRF 20); audio, subtitles, attachments and chapters copied |
+| Output file | none | HEVC 10-bit (libx265, CRF 20) by default, or NVENC / AV1 via `--encodeur`; audio, subtitles, attachments and chapters copied |
 
 ### The native engine, function by function (`src/moteur.rs`)
 
@@ -76,6 +76,9 @@ anime4k-rs episode.mkv --moteur libplacebo             # on a machine with a GPU
 | `--sortie` | `<input>.anime4k-<preset>.mkv` | output file |
 | `--moteur` | `natif` | `natif` (CPU) or `libplacebo` (GPU through Vulkan) |
 | `--gpu` | first Vulkan GPU | which graphics card renders: its number, or part of its name (`--gpu 1`, `--gpu "RTX 5080"`). Implies `--moteur libplacebo` |
+| `--encodeur` | `libx265` | any ffmpeg video encoder: `libx265`, `libsvtav1`, `libx264`, or on NVIDIA `hevc_nvenc`, `av1_nvenc`, `h264_nvenc` (much faster). 10-bit except H.264 |
+| `--qualite` | `20` | constant quality: CRF for libx26x/SVT-AV1, CQ for NVENC (lower = better, bigger) |
+| `--debit` | none | target bitrate instead of constant quality (`--debit 8M`) |
 | `--images N` | all | stop after N frames (for tests) |
 | `--brut` | off | write raw `gbrpf32le` frames instead of a video (for benchmarks) |
 | `--shaders` | `$ANIME4K_SHADERS` or `./shaders` | folder containing the `.glsl` files |
