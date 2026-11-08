@@ -1,0 +1,81 @@
+{
+  "date": "2026-11-08T04:44:00Z",
+  "commit": "3957751",
+  "machine": {
+    "cpu": "AMD EPYC 9V74 80-Core Processor",
+    "threads": 4,
+    "os": "Linux-7.0.0-1017-azure-x86_64-with-glibc2.39"
+  },
+  "frames": 3,
+  "input": "960x540",
+  "output": "1920x1080",
+  "preset": "C",
+  "source": "clean",
+  "entries": [
+    {
+      "impl": "bicubic (ffmpeg)",
+      "version": "-",
+      "kind": "baseline",
+      "ms": 210.6399,
+      "psnr": 34.422,
+      "ssim": 0.9622,
+      "fidelity_psnr": null,
+      "deterministic": true,
+      "runs_ok": 6,
+      "runs": 6,
+      "error": null
+    },
+    {
+      "impl": "Anime4K GLSL via libplacebo",
+      "version": "3957751",
+      "kind": "reference",
+      "ms": 1264.9187,
+      "psnr": 38.5992,
+      "ssim": 0.9711,
+      "fidelity_psnr": null,
+      "deterministic": true,
+      "runs_ok": 6,
+      "runs": 6,
+      "error": null
+    },
+    {
+      "impl": "anime4k-rs (native)",
+      "version": "3957751",
+      "kind": "ours",
+      "ms": 165.924,
+      "psnr": 38.5835,
+      "ssim": 0.9712,
+      "fidelity_psnr": 67.06,
+      "deterministic": true,
+      "runs_ok": 6,
+      "runs": 6,
+      "error": null
+    },
+    {
+      "impl": "anime4k-rs (native, size S)",
+      "version": "3957751",
+      "kind": "ours-fast",
+      "ms": 57.5935,
+      "psnr": 37.1096,
+      "ssim": 0.9652,
+      "fidelity_psnr": null,
+      "deterministic": true,
+      "runs_ok": 6,
+      "runs": 6,
+      "error": null
+    },
+    {
+      "impl": "andraantariksa/Anime4K-rs",
+      "version": "v0.2",
+      "kind": "theirs",
+      "ms": 113.1098,
+      "psnr": 32.4904,
+      "ssim": 0.9428,
+      "fidelity_psnr": null,
+      "deterministic": true,
+      "runs_ok": 6,
+      "runs": 6,
+      "error": null
+    }
+  ]
+}
