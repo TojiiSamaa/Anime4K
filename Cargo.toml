@@ -4,6 +4,9 @@ version = "0.1.0"
 edition = "2024"
 license = "MIT"
 description = "Conversion à froid avec les shaders Anime4K de bloc97 (MIT)"
+authors = ["TojiiSamaa"]
+repository = "https://github.com/TojiiSamaa/Anime4K"
+homepage = "https://github.com/bloc97/Anime4K"
 
 [profile.release]
 opt-level = 3

@@ -1,3 +1,6 @@
+> **Fork de [bloc97/Anime4K](https://github.com/bloc97/Anime4K) (MIT).** Port Rust hors ligne : moteur CPU natif ou libplacebo, shaders d'origine.
+> Amont : <https://github.com/bloc97/Anime4K> · Projet autonome d'origine : <https://github.com/TojiiSamaa/anime4k-rust> (toujours en ligne ; ce fork porte tout son historique sur la branche `rust`).
+
 <p align="center">
   <a href="https://github.com/TojiiSamaa/anime4k-rs/actions/workflows/perf-bench.yml">
     <img src="bench/bench.svg" alt="Banc : temps par image, qualité et fiabilité, mis à jour par la CI à chaque push" width="900">
@@ -157,6 +160,21 @@ d3d11-adapter="NVIDIA"                    # partie du nom de la carte
 ```
 
 Plex HTPC repose sur mpv et accepte donc les mêmes `mpv.conf` et `input.conf`. Les autres applis Plex, et les téléphones, lisent les fichiers convertis par anime4k-rs.
+
+## Banc de mesure (dernier passage de la CI)
+
+Benchmark — clean source, 960x540 → 1920x1080, preset C, 3 images
+`AMD EPYC 9V74 80-Core Processor` · 4 threads · commit `611277d` · 2026-11-08T07:03:24Z
+
+| Implementation | Version | ms / image | PSNR vs ground truth | SSIM | Fidelity vs GLSL | Reliability |
+|---|---|---:|---:|---:|---:|---|
+| bicubic (ffmpeg) | `-` | 267 | 34.42 dB | 0.9622 | — | 6/6 runs ok · deterministic |
+| Anime4K GLSL via libplacebo | `611277d` | 1608 | 38.60 dB | 0.9711 | — | 6/6 runs ok · deterministic |
+| anime4k-rs (native) | `611277d` | 211 | 38.58 dB | 0.9712 | 67.06 dB | 6/6 runs ok · deterministic |
+| anime4k-rs (native, size S) | `611277d` | 72 | 37.11 dB | 0.9652 | — | 6/6 runs ok · deterministic |
+| andraantariksa/Anime4K-rs | `v0.2` | 146 | 32.49 dB | 0.9428 | — | 6/6 runs ok · deterministic |
+
+Ligne de référence : **Anime4K GLSL via libplacebo** = les shaders d'origine, non modifiés, exécutés par libplacebo ; le moteur Rust natif est comparé à elle.
 
 ## Licence
 
